@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build and sign a Ducky release APK from a clean checkout of a tag.
 #
-#   scripts/release.sh v0.27.0
+#   scripts/release.sh v0.28.0
 #
 # You supply the key, through the environment:
 #   DUCKY_KEYSTORE_PATH      the keystore file (PKCS12 or JKS). Required.

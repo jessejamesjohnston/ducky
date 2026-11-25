@@ -37,8 +37,8 @@ android {
         applicationId = "com.merrimentlabs.ducky"
         minSdk = 34
         targetSdk = 36
-        versionCode = 35
-        versionName = "0.27.0"
+        versionCode = 36
+        versionName = "0.28.0"
 
         // Diagnostic build for widget glitches (a jumping clock or uneven water on a launcher):
         // -PwidgetHeartbeat=false builds an APK whose display tick still runs (the notification
