@@ -64,9 +64,13 @@ Ducky collects nothing. It requests no network permission of any kind (the build
 
 ## Install
 
-Download `ducky-<version>.apk` from the [latest release](../../releases/latest) and open it on your device (Android 14 or newer). Installing from outside an app store means allowing your browser or file manager to install apps, and checking yourself that the file is the real one: compare its signing certificate (`apksigner verify --print-certs ducky-<version>.apk`) with this SHA-256.
+Download `ducky-<version>.apk` from the [latest release](../../releases/latest) and open it on your device (Android 14 or newer). Installing from outside an app store means allowing your browser or file manager to install apps, and checking yourself that the file is the real one. The easy check is `scripts/release.sh --verify ducky-<version>.apk` from a clone of this repository: it needs the Android SDK's build-tools but no key, checks the signature, compares the signing certificate with Ducky's, and prints the certificate SHA-256 in this form:
 
 `4F:86:15:6A:55:92:2A:CD:96:98:F0:46:7D:00:09:DD:57:CD:1F:4E:9E:D1:4E:05:7D:24:86:D4:E2:6A:4D:E2`
+
+To check by hand, run `apksigner verify --print-certs ducky-<version>.apk`. It prints the same value in lowercase without colons, on the line `Signer #1 certificate SHA-256 digest:`
+
+`4f86156a55922acd9698f0467d0009dd57cd1f4e9ed14e057d2486d4e26a4de2`
 
 Each release also lists the file's SHA-256 in `SHA256SUMS`. Ducky does not check for updates itself, because it never goes online. To hear about new versions, watch this repository's releases on GitHub (Watch, Custom, Releases), or add the repository to an updater such as [Obtainium](https://github.com/ImranR98/Obtainium). Settings, About, Releases opens the releases page.
 

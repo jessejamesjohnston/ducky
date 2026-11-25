@@ -13,6 +13,9 @@ CI never sees the key and never builds a release; it builds and tests only.
 - Certificate SHA-256 (published in the README and in every release's notes so anyone can check
   an APK):
   `4F:86:15:6A:55:92:2A:CD:96:98:F0:46:7D:00:09:DD:57:CD:1F:4E:9E:D1:4E:05:7D:24:86:D4:E2:6A:4D:E2`
+  This is the form `keytool` and `scripts/release.sh --verify` print. `apksigner verify
+  --print-certs` prints the same value in lowercase without colons:
+  `4f86156a55922acd9698f0467d0009dd57cd1f4e9ed14e057d2486d4e26a4de2`
 - Never commit a keystore (`*.jks` and `*.keystore` are gitignored) and never put the password in
   a file, `local.properties`, a command line or a log.
 
@@ -97,7 +100,9 @@ it at once, without printing the password.
    for `FATAL EXCEPTION`, `ClassNotFound` and `NoSuchMethod`.
 7. **Publish.** Create the release as a draft from the tag, attach the APK and `SHA256SUMS`
    (never the mapping file), paste the changelog section and the certificate SHA-256 into the
-   notes, then publish:
+   notes, then publish. Give the certificate in both forms, the colon form above and the
+   lowercase form `apksigner verify --print-certs` prints, and name
+   `scripts/release.sh --verify ducky-X.Y.Z.apk` as the easy check:
 
    ```sh
    gh release create vX.Y.Z dist/ducky-X.Y.Z.apk dist/SHA256SUMS --draft \
