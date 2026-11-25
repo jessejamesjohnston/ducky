@@ -83,7 +83,9 @@ it at once, without printing the password.
 
    To check an APK the script did not just build (a download from the releases page, or a copy
    someone sent you), run `scripts/release.sh --verify path/to/ducky.apk`. It needs no keystore
-   and no tag: it checks the signature and the certificate SHA-256 (the official one, or
+   and no tag, only `unzip` and `apksigner` (the newest build-tools under `ANDROID_HOME` or
+   `ANDROID_SDK_ROOT`, else the one on `PATH`), and stops at once, saying which is missing. It
+   checks the signature and the certificate SHA-256 (the official one, or
    `DUCKY_EXPECTED_CERT`), refuses a debug-signed APK, and prints the commit the APK records,
    which you can compare with the release's tag.
 

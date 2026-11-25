@@ -4,6 +4,9 @@
 #   scripts/release.sh v0.28.0            build, sign and verify
 #   scripts/release.sh --verify <apk>     verify an APK only (its recorded commit is not compared)
 #
+# Both need unzip and apksigner: the newest build-tools in ANDROID_HOME (or ANDROID_SDK_ROOT), or
+# else the apksigner on PATH (Debian's apksigner package, for one).
+#
 # You supply the key, through the environment:
 #   DUCKY_KEYSTORE_PATH      the keystore file (PKCS12 or JKS). Required to build.
 #   DUCKY_KEYSTORE_KEYALIAS  the key's alias. Optional when the keystore holds one key (it is used
@@ -34,9 +37,13 @@ VCS_ENTRY=META-INF/version-control-info.textproto
 die() { echo "release: $*" >&2; exit 1; }
 
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-[[ -n "$SDK" ]] || die "set ANDROID_HOME to your Android SDK"
-BUILD_TOOLS="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)"
-[[ -x "$BUILD_TOOLS/apksigner" ]] || die "no apksigner in $BUILD_TOOLS"
+APKSIGNER=""
+if [[ -n "$SDK" ]]; then
+    APKSIGNER="$( (ls -d "$SDK"/build-tools/* 2>/dev/null || true) | sort -V | tail -1)/apksigner"
+fi
+[[ -x "$APKSIGNER" ]] || APKSIGNER="$(command -v apksigner || true)"
+[[ -n "$APKSIGNER" ]] || die "no apksigner: set ANDROID_HOME to an Android SDK with build-tools, or put apksigner on PATH"
+command -v unzip >/dev/null || die "unzip not on PATH"
 
 # Every check a release APK must pass. $2, when given, is the commit the APK must record.
 # Prints what it checked; returns non-zero on any failure.
@@ -48,7 +55,7 @@ verify() {
     # One apksigner run: its exit status says whether the signature verifies at all (a modified
     # APK does not), and its output names the signing certificate.
     rc=0
-    out="$("$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$apk" 2>&1)" || rc=$?
+    out="$("$APKSIGNER" verify --verbose --print-certs "$apk" 2>&1)" || rc=$?
     if (( rc != 0 )); then
         echo "  the signature does not verify (the APK was modified after signing, or is not signed)" >&2
         sed -n 's/^ERROR: /  apksigner: /p' <<<"$out" | head -3 >&2

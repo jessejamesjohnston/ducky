@@ -64,7 +64,7 @@ Ducky collects nothing. It requests no network permission of any kind (the build
 
 ## Install
 
-Download `ducky-<version>.apk` from the [latest release](../../releases/latest) and open it on your device (Android 14 or newer). Installing from outside an app store means allowing your browser or file manager to install apps, and checking yourself that the file is the real one. The easy check is `scripts/release.sh --verify ducky-<version>.apk` from a clone of this repository: it needs the Android SDK's build-tools but no key, checks the signature, compares the signing certificate with Ducky's, and prints the certificate SHA-256 in this form:
+Download `ducky-<version>.apk` from the [latest release](../../releases/latest) and open it on your device (Android 14 or newer). Installing from outside an app store means allowing your browser or file manager to install apps, and checking yourself that the file is the real one. The easy check is `scripts/release.sh --verify ducky-<version>.apk` from a clone of this repository: it needs no key, only `unzip` and `apksigner` (from the Android SDK's build-tools, found through `ANDROID_HOME` or `ANDROID_SDK_ROOT`, or on your `PATH`), and it checks the signature, compares the signing certificate with Ducky's, and prints the certificate SHA-256 in this form:
 
 `4F:86:15:6A:55:92:2A:CD:96:98:F0:46:7D:00:09:DD:57:CD:1F:4E:9E:D1:4E:05:7D:24:86:D4:E2:6A:4D:E2`
 
