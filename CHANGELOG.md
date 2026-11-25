@@ -21,7 +21,7 @@ The first public release.
   time, the duck keeps clear of the digits and the water's highlight line fades behind them, so
   the time and the hint under it stay easy to read.
 - Four home-screen widgets with add-time buttons: Water tank, Lily pads, Bubbles and Egg timer.
-  Settings, Add widget shows all four, each previewed in the shape it takes on the home screen.
+  Settings, Add widget shows all four, with previews of the same size and layout.
 - The alarm rings on the alarm volume and vibrates until you stop it: full screen over the lock
   screen, or dropping down from the top while you use the phone. The alarm screen, the
   notification, the app and the widgets all offer the same two choices, Stop and +1 min.
