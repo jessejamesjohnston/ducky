@@ -141,11 +141,12 @@ internal object TimerNotifications {
     }
 
     /**
-     * The most segments a ProgressStyle bar draws as given. Android merges a longer list into
-     * one plain segment (and logs "Progress segments limit (10) is reached"), which would lose
-     * the two-tone water.
+     * How many segments the water bar has. ProgressStyle has a limit of 10 segments; past it
+     * Android merges them into one plain segment (and logs "Progress segments limit (10) is
+     * reached"), which would lose the two-tone water. Eight stays clear of the limit, and an
+     * even count starts and ends the bar on different tones.
      */
-    internal const val WAVE_SEGMENTS = 10
+    internal const val WAVE_SEGMENTS = 8
 
     /** Alternating accent / lighter-accent segments: stylized water. */
     @androidx.annotation.RequiresApi(36)

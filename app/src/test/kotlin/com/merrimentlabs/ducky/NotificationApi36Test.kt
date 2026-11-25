@@ -49,7 +49,7 @@ class NotificationApi36Test {
         Notification.Builder.recoverBuilder(context, n).style as Notification.ProgressStyle
 
     @Test
-    fun `a running timer posts a ProgressStyle card of ten two-tone water segments`() = runBlocking {
+    fun `a running timer posts a ProgressStyle card of eight two-tone water segments`() = runBlocking {
         TimerController.addTime(context, 120_000L)
         val n = card()
         assertEquals(Notification.ProgressStyle::class.java.name, n.extras.getString(Notification.EXTRA_TEMPLATE))
@@ -59,10 +59,10 @@ class NotificationApi36Test {
 
         val segments = style(n).progressSegments
         assertEquals(TimerNotifications.WAVE_SEGMENTS, segments.size)
-        // More than the platform's limit and Android merges the bar into one plain segment.
+        // At the platform's limit Android may merge the bar into one plain segment: stay under it.
         val limit = Notification.ProgressStyle::class.java.getDeclaredField("MAX_PROGRESS_SEGMENT_LIMIT")
             .apply { isAccessible = true }.getInt(null)
-        assertTrue("${segments.size} segments, platform limit $limit", segments.size <= limit)
+        assertTrue("${segments.size} segments, platform limit $limit", segments.size < limit)
         assertEquals("even, so the bar starts and ends on different tones", 0, segments.size % 2)
         assertEquals("segments add up to the total", 120_000, segments.sumOf { it.length })
         val accent = n.color
