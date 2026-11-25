@@ -154,6 +154,34 @@ class PondGlideTest {
         assertTrue("wandered into the readout by $worst px", worst <= 0f)
     }
 
+    @Test fun `beside large digits on a wide pane it keeps a clear gap, not the bare minimum`() {
+        // A large-screen pane (1100 dp at 2x) with a readout of large digits plus the hint
+        // (115 dp tall) in the middle at the water's height: plenty of room on either side.
+        val sim = PondSim().apply {
+            density = 2f; width = 2200f; height = 1400f; headerBottom = 160f
+            setState(halfway)
+        }
+        sim.run(0.5f, 0f)
+        val left = 900f
+        val right = 1300f
+        sim.setReadoutBounds(left, sim.meanY - 150f, right - left, 230f)
+        val gap = sim.sideGap()
+        assertEquals("40% of the readout's height", 92f, gap, 0.01f)
+        assertTrue("more than the 24 dp floor", gap > 48f)
+        var closest = Float.MAX_VALUE
+        sim.run(6f, 0f) // the band arrived: it swims out to its side
+        sim.run(30f, 0f) {
+            // Clearance on the side it is on (negative: overlapping the digits).
+            val body = maxOf(left - (duckX + DuckPainter.RIGHT * duckScale), (duckX + DuckPainter.LEFT * duckScale) - right)
+            closest = minOf(closest, body)
+        }
+        assertTrue("closest approach $closest px keeps the ${gap} px gap", closest >= gap - 1f)
+    }
+
+    @Test fun `the gap falls back to 24 dp before the readout is laid out`() {
+        assertEquals(60f, pond().sideGap(), 0.01f)
+    }
+
     /**
      * Seen on a phone: after the first tilt the duck stopped following while the water
      * kept tilting. With the water at the readout's height, the readout's side was a wall and a

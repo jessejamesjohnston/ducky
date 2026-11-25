@@ -389,6 +389,28 @@ class PondSimTest {
         assertEquals(tick + 1, sim.tick.longValue)
     }
 
+    @Test fun `the crest line steps aside only while the surface is at the readout's height`() {
+        val sim = pond(halfway)
+        assertEquals("not stepped, no readout", 0f, sim.crestGap(), 0f)
+        sim.frames(30)
+        assertEquals("no readout laid out", 0f, sim.crestGap(), 0f)
+        // The hint's line straddles the surface.
+        sim.setReadoutBounds(300f, sim.meanY - 180f, 400f, 200f)
+        assertEquals(1f, sim.crestGap(), 0f)
+        // Well above the water (the start of a long timer has it below the readout instead).
+        sim.setReadoutBounds(300f, sim.meanY - 600f, 400f, 200f)
+        assertEquals(0f, sim.crestGap(), 0f)
+        sim.setReadoutBounds(300f, sim.meanY + 400f, 400f, 200f)
+        assertEquals(0f, sim.crestGap(), 0f)
+        // Just past the pad it eases out instead of switching off.
+        val pad = PondSim.CREST_GAP_PAD_DP * sim.density
+        val fade = PondSim.CREST_GAP_FADE_DP * sim.density
+        val highest = listOf(300f, 500f, 700f).minOf { sim.surfaceAt(it) }
+        sim.setReadoutBounds(300f, highest + pad + fade / 2f, 400f, 200f)
+        val g = sim.crestGap()
+        assertTrue("easing: $g", g > 0f && g < 1f)
+    }
+
     @Test fun `stranded at the floor the duck stays on the floor`() {
         val sim = pond(ringing)
         sim.frames(60)

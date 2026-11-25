@@ -209,6 +209,12 @@ class PondSim(seed: Int = 7, visitorRng: Random = Random.Default) {
 
     companion object {
         private const val TWO_PI = (2 * PI).toFloat()
+        /** The duck's gap beside the readout, as a share of the readout's height (time + hint). */
+        const val SIDE_GAP_SHARE = 0.4f
+        /** The crest line steps aside while the surface is this close to the readout's height... */
+        const val CREST_GAP_PAD_DP = 6f
+        /** ...and comes back fully over this much more. */
+        const val CREST_GAP_FADE_DP = 16f
 
         // The glide (see DuckGlide), in dp and seconds.
         /** Below this tilt the duck ignores the slope: a phone held nearly level isn't a slide. */
@@ -433,6 +439,34 @@ class PondSim(seed: Int = 7, visitorRng: Random = Random.Default) {
         if (hi <= lo) { lo = width / 2f; hi = lo }
     }
 
+    /**
+     * Room the duck keeps beside the readout while the water is at its height: a share of the
+     * readout's height, so beside large digits it doesn't sit against the first or last one,
+     * and never under 24 dp. Where the pond is too narrow for that, the slot is clamped to the
+     * pond's edge as before.
+     */
+    internal fun sideGap(): Float =
+        if (readoutTop.isNaN()) dp(24f) else max(dp(24f), (readoutBottom - readoutTop) * SIDE_GAP_SHARE)
+
+    /**
+     * How strongly the surface's highlight line steps aside for the readout this frame, 0 to 1:
+     * full while the surface is within the readout's height (plus [CREST_GAP_PAD_DP]), easing
+     * out over [CREST_GAP_FADE_DP] beyond it. Sampled at the readout's two edges and its middle,
+     * so a tilted surface counts wherever it meets the text. The line would otherwise run
+     * straight through the small hint under the time.
+     */
+    fun crestGap(): Float {
+        if (readoutTop.isNaN() || duckX.isNaN()) return 0f
+        val top = readoutTop - dp(CREST_GAP_PAD_DP)
+        val bottom = readoutBottom + dp(CREST_GAP_PAD_DP)
+        var dist = Float.MAX_VALUE
+        for (x in floatArrayOf(readoutLeft, (readoutLeft + readoutRight) / 2f, readoutRight)) {
+            val y = surfaceAt(x)
+            dist = min(dist, if (y < top) top - y else if (y > bottom) y - bottom else 0f)
+        }
+        return 1f - PondMath.smoothstep(0f, dp(CREST_GAP_FADE_DP), dist)
+    }
+
     private fun dodge(target: Float, lo: Float, hi: Float, restY: Float): Float {
         if (readoutTop.isNaN()) { dodgeSide = 0; return target }
         val margin = dp(24f)
@@ -446,8 +480,9 @@ class PondSim(seed: Int = 7, visitorRng: Random = Random.Default) {
         // walls in stepDuck); once it is past the middle, the far side is its side.
         val sideNow = if (duckX.isNaN() || duckX < (readoutLeft + readoutRight) / 2f) -1 else 1
         if (dodgeSide == 0 || (dodgeSide != sideNow && carried)) dodgeSide = sideNow
-        val leftSlot = readoutLeft - margin - DuckPainter.RIGHT * duckScale
-        val rightSlot = readoutRight + margin - DuckPainter.LEFT * duckScale
+        val gap = sideGap()
+        val leftSlot = readoutLeft - gap - DuckPainter.RIGHT * duckScale
+        val rightSlot = readoutRight + gap - DuckPainter.LEFT * duckScale
         dodgeEdge = if (dodgeSide < 0) leftSlot.coerceIn(lo, hi) else rightSlot.coerceIn(lo, hi)
         return if (dodgeSide < 0) min(target, leftSlot).coerceAtLeast(lo)
         else max(target, rightSlot).coerceAtMost(hi)

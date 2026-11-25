@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PointMode
@@ -30,6 +31,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.LocalContext
@@ -291,8 +293,13 @@ private fun DrawScope.drawPond(sim: PondSim, c: PondColors, k: PondCache, duck: 
                     translate(top = 5f * d) { drawPath(k.crestPath, c.crest, alpha = 0.16f, style = k.bandStroke) }
                 }
             }
-            drawPath(k.crestPath, c.crest, alpha = if (c.dark) 0.55f else 0.85f, style = k.crestStroke)
-            c.surfaceLine?.let { drawPath(k.crestPath, it, style = k.lineStroke) }
+            // The highlight line steps aside behind the readout, so it never runs through the
+            // hint (the water's color still changes there, and so does the text's ink).
+            val crestAlpha = if (c.dark) 0.55f else 0.85f
+            drawAroundReadout(sim, sim.crestGap()) { fade ->
+                drawPath(k.crestPath, c.crest, alpha = crestAlpha * fade, style = k.crestStroke)
+                c.surfaceLine?.let { drawPath(k.crestPath, it, alpha = fade, style = k.lineStroke) }
+            }
         }
 
         // Ripples ride the surface, spreading and fading.
@@ -341,6 +348,30 @@ private fun DrawScope.drawPond(sim: PondSim, c: PondColors, k: PondCache, duck: 
         }) {
             drawPath(k.zPath, c.inkAbove, alpha = a * 0.6f, style = k.zStroke)
         }
+    }
+}
+
+/**
+ * Runs [draw] with an alpha factor of 1 away from the readout and 1 - [gap] behind it (its width
+ * plus 8 dp each side), ramping between the two over 16 dp in a few steps. The clips are
+ * vertical strips through the whole pond, so a line passing under the readout fades out and back
+ * in, wherever its waves carry it.
+ */
+private inline fun DrawScope.drawAroundReadout(sim: PondSim, gap: Float, draw: DrawScope.(Float) -> Unit) {
+    if (gap <= 0f) { draw(1f); return }
+    val d = density
+    val l = sim.readoutLeft - 8f * d
+    val r = sim.readoutRight + 8f * d
+    val fade = 16f * d
+    val steps = 6
+    val step = fade / steps
+    val far = 100_000f
+    clipRect(l - fade, -far, r + fade, far, ClipOp.Difference) { draw(1f) }
+    if (gap < 1f) clipRect(l, -far, r, far) { draw(1f - gap) }
+    for (i in 0 until steps) {
+        val a = 1f - gap * (i + 0.5f) / steps
+        clipRect(l - fade + i * step, -far, l - fade + (i + 1) * step, far) { draw(a) }
+        clipRect(r + fade - (i + 1) * step, -far, r + fade - i * step, far) { draw(a) }
     }
 }
 
