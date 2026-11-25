@@ -103,9 +103,11 @@ if [[ -z "${DUCKY_KEYSTORE_PASS:-}" ]]; then
 fi
 [[ -n "$DUCKY_KEYSTORE_PASS" ]] || die "empty keystore password"
 # Fail before Gradle if the password or alias is wrong. keytool reads the password from the
-# environment, and runs in English so its listing can be parsed the same way everywhere.
+# environment, and runs in English so its listing can be parsed the same way everywhere. The
+# locale is left alone: Java decodes the password in the locale's character set, as Gradle will
+# when it signs, so a password with non-ASCII characters checks out here exactly when it works there.
 export DUCKY_KEYSTORE_PASS
-keytool_en() { LC_ALL=C keytool -J-Duser.language=en -J-Duser.country=US "$@"; }
+keytool_en() { keytool -J-Duser.language=en -J-Duser.country=US "$@"; }
 KEYS="$(keytool_en -list -keystore "$STORE" -storepass:env DUCKY_KEYSTORE_PASS 2>/dev/null)" \
     || die "the keystore or its password did not check out"
 # "alias, date, PrivateKeyEntry," per key. Keystores store aliases in lowercase.
