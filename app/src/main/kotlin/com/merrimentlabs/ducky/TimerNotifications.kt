@@ -140,6 +140,13 @@ internal object TimerNotifications {
         notificationManager(context).notify(COUNTDOWN_NOTIFICATION_ID, notification)
     }
 
+    /**
+     * The most segments a ProgressStyle bar draws as given. Android merges a longer list into
+     * one plain segment (and logs "Progress segments limit (10) is reached"), which would lose
+     * the two-tone water.
+     */
+    internal const val WAVE_SEGMENTS = 10
+
     /** Alternating accent / lighter-accent segments: stylized water. */
     @androidx.annotation.RequiresApi(36)
     private fun waveSegments(
@@ -147,7 +154,7 @@ internal object TimerNotifications {
         accent: Int,
     ): List<Notification.ProgressStyle.Segment> {
         val lighter = lighten(accent, 0.45f)
-        val count = 12
+        val count = WAVE_SEGMENTS
         val segLen = (totalInt / count).coerceAtLeast(1)
         return (0 until count).map { i ->
             val len = if (i == count - 1) totalInt - segLen * (count - 1) else segLen
