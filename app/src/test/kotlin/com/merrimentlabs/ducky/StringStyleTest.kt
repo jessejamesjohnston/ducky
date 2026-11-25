@@ -14,8 +14,9 @@ import javax.xml.parsers.DocumentBuilderFactory
  * <string-array>, including the ones marked translatable="false":
  *
  * - A single sentence has no closing period. A block of two or more sentences keeps them.
- * - A trailing ellipsis only marks something in progress, so the label's first word ends in
- *   "-ing" ("Ringing…"). Never on a label that opens a dialog or a screen.
+ * - A trailing ellipsis only marks something in progress, so the label's first word is letters
+ *   only, at least six long and ends in "ing" ("Ringing…", "Saving your timer…", but not
+ *   "Ring…" or "Bring…"). Never on a label that opens a dialog or a screen.
  * - Two parts are joined with a middle dot ( · ) or a comma, never an em dash, an en dash, a
  *   hyphen standing in for a dash (" - " or "--") or a semicolon.
  * - American spelling.
@@ -53,6 +54,8 @@ class StringStyleTest {
         /** Text inside straight or curly double quotes, which may be someone else's words. */
         val QUOTED = Regex("\"[^\"]*\"|“[^”]*”")
         val SENTENCE_END = Regex("[.!?](?=\\s|$)")
+        /** A first word that reads as something in progress: letters only, six or more, "-ing". */
+        val PROGRESS_WORD = Regex("\\p{L}{3,}ing", RegexOption.IGNORE_CASE)
         val SERIAL_COMMA_MISSING = Regex("\\w[^,.;:·]*, [^,.;:·]+ (and|or) \\w")
     }
 
@@ -118,7 +121,7 @@ class StringStyleTest {
             t.endsWith("...") -> t.dropLast(3)
             else -> null
         }
-        if (ellipsis != null && !ellipsis.trim().substringBefore(' ').endsWith("ing", ignoreCase = true)) {
+        if (ellipsis != null && !PROGRESS_WORD.matches(ellipsis.trim().substringBefore(' '))) {
             found[Rule.ELLIPSIS] = "a trailing ellipsis on something that is not in progress"
         }
         if ('\u2014' in t || '\u2013' in t || " - " in t || "--" in t || Regex(";\\s").containsMatchIn(t)) {
@@ -174,6 +177,10 @@ class StringStyleTest {
         assertEquals(setOf(Rule.ELLIPSIS), rules("Edit name..."))
         assertEquals(setOf(Rule.ELLIPSIS), rules("Choose a setting…"))
         assertEquals(setOf(Rule.ELLIPSIS), rules("Settings…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Ring…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Bring…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Bring it…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Re-ring…"))
         assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Working offline \u2014 using saved data"))
         assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Paused \u2013 tap to resume"))
         assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Paused; tap to resume"))
