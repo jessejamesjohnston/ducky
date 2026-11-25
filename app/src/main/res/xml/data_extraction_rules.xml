@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What Android may copy in a device backup or a transfer to a new phone: everything Ducky keeps
+     (the running timer and the settings in DataStore, the two screen hints in the ducky_ui
+     preferences file, and Glance's widget files), which is also Android's default. WorkManager's
+     database sits in no_backup/ and is never copied. docs/ARCHITECTURE.md lists every file.
+     Listing the rules here makes the choice explicit. Ducky never reads or sends a backup itself. -->
+<data-extraction-rules>
+    <cloud-backup />
+    <device-transfer />
+</data-extraction-rules>

@@ -1,0 +1,29 @@
+name: Bug report
+description: Something in Ducky does not work as it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. For an alarm that did not ring, say what the phone was doing at the time (locked, in another app, battery saver).
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Ducky version
+      description: Settings, About shows it.
+      placeholder: "0.27.0"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "A phone or tablet, Android 16"
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Screenshots help. Please leave out anything personal.

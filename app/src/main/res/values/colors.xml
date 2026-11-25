@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Static base tones follow the water-blue default seed (hue of 1E88E5).
+         Runtime theming comes from Palette; these cover pre-compose surfaces
+         (window background). The icon's tiles are in launcher_colors.xml. -->
+    <color name="bg">#F1F5F9</color>
+    <!-- Widget initialLayout placeholder (inflated by the launcher before the
+         first Glance render; must not depend on runtime palette). -->
+    <color name="widget_loading_bg">#F1F5F9</color>
+    <color name="widget_loading_fg">#44494F</color>
+</resources>

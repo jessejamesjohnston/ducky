@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <!-- Debug-only capture aids: the widget gallery, and the alarm screen
+             made startable from adb (`am start -n …/.AlarmActivity`) so it can be
+             captured without a lock screen. -->
+        <activity android:name=".WidgetPreviewActivity" android:exported="true" />
+        <activity android:name=".AlarmActivity" android:exported="true" tools:replace="android:exported" />
+    </application>
+</manifest>

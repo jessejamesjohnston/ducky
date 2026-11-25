@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static fallback the LAUNCHER inflates when it has no rendered views yet
+     (post-boot, pre-first-render). Must stay dumb: no bindings, no theme
+     attrs from our process: it renders in the launcher's context. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_loading_bg">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/widget_loading_time"
+        android:textColor="@color/widget_loading_fg"
+        android:textSize="26sp"
+        android:textStyle="bold" />
+</FrameLayout>

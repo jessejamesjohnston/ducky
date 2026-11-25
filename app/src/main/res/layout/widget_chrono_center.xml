@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The widget clock: one Chronometer for every state, so the digits never jump on pause. -->
+<!-- Hidden from TalkBack: a Chronometer speaks its own duration (now minus base), never its
+     text, so a stopped clock showing 00:00 read as "2 seconds". The time box around it carries
+     the spoken state for every mode. -->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_chrono"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:importantForAccessibility="no"
+    android:countDown="true"
+    android:fontFamily="sans-serif-medium"
+    android:fontFeatureSettings="tnum"
+    android:includeFontPadding="false"
+    android:maxLines="1"
+    android:textSize="44sp" />
