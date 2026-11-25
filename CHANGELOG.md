@@ -17,14 +17,16 @@ The first public release.
 - The pond: the water level is the time left, and a rubber duck rides it down. Pause and the
   duck dozes; cancel and the pond refills. Tilt the phone and the water tilts, and the duck
   glides to the low side and bumps the edge. On timers longer than five minutes, a diver, a
-  submarine or a lake monster now and then swims by under the duck.
+  submarine or a lake monster now and then swims by under the duck. As the water passes the
+  time, the duck keeps clear of the digits and the water's highlight line fades behind them, so
+  the time and the hint under it stay easy to read.
 - Four home-screen widgets with add-time buttons: Water tank, Lily pads, Bubbles and Egg timer.
-  Settings, Add widget shows all four.
+  Settings, Add widget shows all four, each previewed in the shape it takes on the home screen.
 - The alarm rings on the alarm volume and vibrates until you stop it: full screen over the lock
   screen, or dropping down from the top while you use the phone. The alarm screen, the
   notification, the app and the widgets all offer the same two choices, Stop and +1 min.
 - A live countdown in the notification with Pause and Cancel, promoted to a Live Update on
-  Android 16 and newer.
+  Android 16 and newer, with Ducky riding a two-tone water progress bar.
 - An alarm-setup card when notifications or full-screen alarms are turned off, with a shortcut
   to the setting, and a Test alarm in Settings.
 - Four styles, twelve colors or any color from a wheel, and a high-contrast mode. The water and
