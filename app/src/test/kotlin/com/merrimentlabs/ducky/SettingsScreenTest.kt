@@ -449,7 +449,7 @@ class SettingsScreenTest {
         rule.awaitStore(read = TimerStore::settings) { it.seedColorArgb == PRESET_SEEDS[0] }
         rule.settingsAwaitDrained { onNodeWithContentDescription("Red, selected") }
         rule.onNodeWithContentDescription("Water blue").assertExists()
-        rule.onNodeWithText("Custom color…").assertExists()
+        rule.onNodeWithText("Custom color").assertExists()
         rule.awaitStore(read = { widgetRefreshes.get() }) { it >= 1 }
     }
 

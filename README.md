@@ -82,7 +82,7 @@ Ducky is one Kotlin module with Jetpack Compose for the app and Glance for the w
 
 **Ringing.** It is a foreground service that plays the alarm on the alarm audio stream and stays up until you choose Stop or +1 min. Each Stop and +1 min carries the ring it belongs to, so a late tap can never silence a newer alarm.
 
-**Tests.** 415 unit tests (JUnit and Robolectric) cover the controller's state changes and ringing rules, recovery after a reboot, update or clock change, the pond's level and motion math, the duck's glide, widget layout and rendering, launcher icon aliases, the About links and the open-source license list. They cover 99.2% of lines, and CI fails the build under 95% or on any compiler or lint warning. Release builds are minified with R8 and checked on the Android emulator at phone, tablet and large-screen sizes, and the app has been used on a Pixel phone day to day through development.
+**Tests.** 420 unit tests (JUnit and Robolectric) cover the controller's state changes and ringing rules, recovery after a reboot, update or clock change, the pond's level and motion math, the duck's glide, widget layout and rendering, launcher icon aliases, the About links and the open-source license list. They cover 99.3% of lines, and CI fails the build under 95% or on any compiler or lint warning. Release builds are minified with R8 and checked on the Android emulator at phone, tablet and large-screen sizes, and the app has been used on a Pixel phone day to day through development.
 
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the rules the code keeps, and why.
 

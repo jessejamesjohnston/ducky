@@ -53,7 +53,7 @@ class WidgetPreviewActivityTest {
     private fun widget(column: LinearLayout, index: Int) = walk(column.getChildAt(index * 2 + 1))
 
     private fun timeBox(views: List<View>) =
-        views.mapNotNull { it.contentDescription?.toString() }.firstOrNull { it.endsWith("Opens Ducky.") || it == "Time's up, ringing." }
+        views.mapNotNull { it.contentDescription?.toString() }.firstOrNull { it.endsWith("Opens Ducky.") || it == "Time's up, ringing" }
 
     @Test
     fun `with no extras it draws a running tank at all six sizes`() {
@@ -90,7 +90,7 @@ class WidgetPreviewActivityTest {
         }
         assertEquals(listOf("130 × 60 · ringing"), labels(column))
         val views = widget(column, 0)
-        assertEquals("Time's up, ringing.", timeBox(views))
+        assertEquals("Time's up, ringing", timeBox(views))
         val texts = views.filterIsInstance<TextView>().map { it.text.toString() }
         assertTrue(texts.toString(), texts.containsAll(listOf("+1 MIN", "STOP")))
     }

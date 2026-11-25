@@ -39,3 +39,7 @@ The first public release.
 - No network permission of any kind. A manifest merge rule removes the network-state permission
   that WorkManager would add, and every build checks the merged manifest and fails if a network
   permission appears.
+- Wording across the app follows one style: no closing period on a single sentence, an ellipsis
+  only on something in progress, a middle dot or a comma to join two parts, American spelling and
+  natural contractions. A unit test checks every string against these rules and fails the build
+  on a break.

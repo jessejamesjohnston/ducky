@@ -12,6 +12,9 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
@@ -72,7 +75,7 @@ class SettingsCustomColorTest {
         reset()
         TimerController.widgetRefresher = {}
         rule.setContent { TimerTheme { SettingsScreen(onBack = {}, onOpenLicenses = {}) } }
-        rule.customColorAwaitDrained { onNodeWithText("Custom color…") }
+        rule.customColorAwaitDrained { onNodeWithText("Custom color") }
     }
 
     @After
@@ -101,12 +104,15 @@ class SettingsCustomColorTest {
     }
 
     private fun openDialog() {
-        rule.onNodeWithText("Custom color…").performClick()
-        rule.customColorAwaitDrained { onNodeWithText("Custom color") }
+        rule.onNodeWithText("Custom color").performClick()
+        rule.customColorAwaitDrained { dialogTitle() }
         rule.pump(5)
     }
 
     private val slider get() = rule.onNodeWithContentDescription("Color wheel")
+
+    /** The dialog's title. The Settings row that opens it has the same words. */
+    private fun ComposeTestRule.dialogTitle() = onNode(hasText("Custom color") and hasAnyAncestor(isDialog()))
 
     /** The hue the slider reports to TalkBack ("120 degrees"). */
     private fun spokenHue(): Int {
@@ -119,7 +125,7 @@ class SettingsCustomColorTest {
      * The wheel has no semantics of its own; it sits between the title and the slider.
      */
     private fun wheelPoint(angle: Double): Offset {
-        val title = rule.onNodeWithText("Custom color").fetchSemanticsNode().boundsInRoot
+        val title = rule.dialogTitle().fetchSemanticsNode().boundsInRoot
         val bar = slider.fetchSemanticsNode().boundsInRoot
         val centerY = (title.bottom + bar.top) / 2f
         val radius = (bar.top - title.bottom) * 0.38f
@@ -146,7 +152,7 @@ class SettingsCustomColorTest {
         val expected = Palette.hsl(120f, 0.85f, 0.40f).toArgb()
         awaitSeed(expected)
         rule.pump(5)
-        rule.onNodeWithText("Custom color").assertDoesNotExist()
+        rule.dialogTitle().assertDoesNotExist()
         // A custom accent: no swatch is selected and the row offers a change.
         rule.customColorAwaitDrained { onNodeWithText("Custom color · tap to change") }
         rule.onNodeWithContentDescription("Water blue").assertExists()
@@ -165,10 +171,10 @@ class SettingsCustomColorTest {
         rule.pump(2)
         rule.onNodeWithText("Cancel").performClick()
         rule.pump(5)
-        rule.onNodeWithText("Custom color").assertDoesNotExist()
+        rule.dialogTitle().assertDoesNotExist()
         repeat(20) { rule.pump(1); shadowOf(Looper.getMainLooper()).idle(); Thread.sleep(5) }
         assertEquals(TimerStore.DEFAULT_SEED, seed())
-        rule.onNodeWithText("Custom color…").assertExists()
+        rule.onNodeWithText("Custom color").assertExists()
     }
 
     @Test

@@ -130,7 +130,7 @@ class WidgetRenderTest {
                     // No tank: the row itself says the timer is ringing.
                     assertTrue(tag, r.chronos.isEmpty())
                     assertEquals(tag, null, r.timeBox)
-                    assertTrue(tag, r.described.any { it.contentDescription == "Time's up, ringing." })
+                    assertTrue(tag, r.described.any { it.contentDescription == "Time's up, ringing" })
                 } else {
                     assertEquals(tag, "Time's up, ringing. Opens Ducky.", r.timeBox)
                     assertEquals(tag, "00:00", r.chronos.single().text.toString())

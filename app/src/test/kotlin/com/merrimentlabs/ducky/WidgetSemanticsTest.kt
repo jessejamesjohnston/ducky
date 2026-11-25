@@ -37,7 +37,7 @@ class WidgetSemanticsTest {
     fun `the time box names each state in words, never as a bare duration`() {
         assertEquals("No timer set. Opens Ducky.", context.getString(R.string.a11y_widget_idle))
         assertEquals("Time's up, ringing. Opens Ducky.", context.getString(R.string.a11y_widget_ringing))
-        assertEquals("Time's up, ringing.", context.getString(R.string.a11y_widget_ringing_row))
+        assertEquals("Time's up, ringing", context.getString(R.string.a11y_widget_ringing_row))
     }
 
     @Test

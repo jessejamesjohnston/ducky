@@ -41,10 +41,10 @@
     <string name="ringing_status_test">Test alarm · ringing for %1$s</string>
 
     <!-- Alarm readiness banner (timer screen; shown only while something blocks the alarm) -->
-    <string name="alarm_blocked_notifications">Notifications are off, so the alarm can\'t show when time\'s up.</string>
-    <string name="alarm_ask_notifications">Allow notifications so the alarm can show when time\'s up.</string>
-    <string name="alarm_blocked_channel">Timer alarms are set not to pop up, so the alarm can\'t show.</string>
-    <string name="alarm_blocked_fullscreen">Let the alarm fill the screen when time\'s up, even on the lock screen.</string>
+    <string name="alarm_blocked_notifications">Notifications are off, so the alarm can\'t show when time\'s up</string>
+    <string name="alarm_ask_notifications">Allow notifications so the alarm can show when time\'s up</string>
+    <string name="alarm_blocked_channel">Timer alarms are set not to pop up, so the alarm can\'t show</string>
+    <string name="alarm_blocked_fullscreen">Let the alarm fill the screen when time\'s up, even on the lock screen</string>
     <string name="alarm_blocked_action">Turn on in Settings</string>
     <string name="alarm_action_allow">Allow</string>
     <string name="alarm_action_not_now">Not now</string>
@@ -73,7 +73,7 @@
     <string name="section_style">Style</string>
     <string name="section_color">Color</string>
     <string name="button_n">Button %1$d</string>
-    <string name="custom_color">Custom color…</string>
+    <string name="custom_color">Custom color</string>
     <string name="custom_color_change">Custom color · tap to change</string>
     <string name="custom_color_title">Custom color</string>
     <string name="set">Use color</string>
@@ -113,7 +113,7 @@
     <string name="a11y_widget_idle">No timer set. Opens Ducky.</string>
     <string name="a11y_widget_ringing">Time\'s up, ringing. Opens Ducky.</string>
     <!-- The small widget's ringing row has only +1 min and Stop; it does not open the app. -->
-    <string name="a11y_widget_ringing_row">Time\'s up, ringing.</string>
+    <string name="a11y_widget_ringing_row">Time\'s up, ringing</string>
     <string name="a11y_zero_seconds">0 seconds</string>
     <string name="a11y_hue">Color wheel</string>
 
@@ -160,7 +160,7 @@
     <string name="contact">Contact</string>
     <string name="contact_email" translatable="false">hello@merrimentlabs.com</string>
     <string name="copyright_line">Copyright © 2026 Jesse Johnston. Published by Merriment Labs.</string>
-    <string name="privacy_policy_subtitle">Ducky collects nothing and can\'t go online.</string>
+    <string name="privacy_policy_subtitle">Ducky collects nothing and can\'t go online</string>
     <string name="privacy_policy_url" translatable="false">https://merrimentlabs.com/privacy/ducky</string>
     <string name="open_source_licenses">Open-source notices</string>
     <string name="open_source_licenses_subtitle">The open-source software Ducky is built with</string>

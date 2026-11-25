@@ -238,7 +238,7 @@ class MainActivityTest {
         // Robolectric has no shadow for canUseFullScreenIntent: the binder stub answers false.
         grantNotifications()
         launch()
-        rule.awaitNode { onNodeWithText("Let the alarm fill the screen when time's up, even on the lock screen.") }
+        rule.awaitNode { onNodeWithText("Let the alarm fill the screen when time's up, even on the lock screen") }
             .performClick()
         val started = shadowOf(activity!!).nextStartedActivity
         assertEquals(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, started.action)
@@ -251,7 +251,7 @@ class MainActivityTest {
         alarmChannel(NotificationManager.IMPORTANCE_DEFAULT)
         launch()
         rule.awaitNode {
-            onNodeWithText("Timer alarms are set not to pop up, so the alarm can't show.")
+            onNodeWithText("Timer alarms are set not to pop up, so the alarm can't show")
         }.performClick()
         val started = shadowOf(activity!!).nextStartedActivity
         assertEquals(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS, started.action)
@@ -271,7 +271,7 @@ class MainActivityTest {
             IntentFilter(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply { addCategory(Intent.CATEGORY_DEFAULT) },
         )
         launch()
-        rule.awaitNode { onNodeWithText("Let the alarm fill the screen when time's up, even on the lock screen.") }
+        rule.awaitNode { onNodeWithText("Let the alarm fill the screen when time's up, even on the lock screen") }
             .performClick()
         val started = shadowOf(activity!!).nextStartedActivity
         assertEquals(Settings.ACTION_APP_NOTIFICATION_SETTINGS, started.action)
@@ -285,7 +285,7 @@ class MainActivityTest {
         rule.awaitNode { onNodeWithText("Not now") }.performClick()
         awaitTrue { FullScreenTip.dismissed(context) }
         rule.pump()
-        rule.onNodeWithText("Let the alarm fill the screen when time's up, even on the lock screen.").assertDoesNotExist()
+        rule.onNodeWithText("Let the alarm fill the screen when time's up, even on the lock screen").assertDoesNotExist()
         assertNull("not now opened nothing", shadowOf(activity!!).nextStartedActivity)
     }
 
@@ -294,7 +294,7 @@ class MainActivityTest {
         shadowOf(nm).setNotificationsEnabled(false)
         NotificationAsk.markAsked(context)
         launch()
-        rule.awaitNode { onNodeWithText("Notifications are off, so the alarm can't show when time's up.") }
+        rule.awaitNode { onNodeWithText("Notifications are off, so the alarm can't show when time's up") }
         rule.onNodeWithText("Not now").assertDoesNotExist()
     }
 
@@ -307,7 +307,7 @@ class MainActivityTest {
         // A resume re-reads whether Android would still show its dialog.
         scenario!!.moveToState(Lifecycle.State.STARTED)
         scenario!!.moveToState(Lifecycle.State.RESUMED)
-        rule.awaitNode { onNodeWithText("Allow notifications so the alarm can show when time's up.") }
+        rule.awaitNode { onNodeWithText("Allow notifications so the alarm can show when time's up") }
         rule.awaitNode { onNodeWithText("Allow") }.performClick()
         val request = shadowOf(activity!!).lastRequestedPermission
         assertEquals(listOf(Manifest.permission.POST_NOTIFICATIONS), request.requestedPermissions.toList())
@@ -324,7 +324,7 @@ class MainActivityTest {
         rule.awaitNode { onNodeWithText("Add time to start") }
         // Nothing set yet: no ask, and no complaint about notifications.
         assertNull(shadowOf(activity!!).lastRequestedPermission)
-        rule.onNodeWithText("Notifications are off, so the alarm can't show when time's up.").assertDoesNotExist()
+        rule.onNodeWithText("Notifications are off, so the alarm can't show when time's up").assertDoesNotExist()
 
         rule.awaitNode { onNodeWithContentDescription("Add 30 seconds") }.performClick()
         rule.awaitNode {
@@ -336,7 +336,7 @@ class MainActivityTest {
 
         // Denied: the banner moves on from the reason to what is true now.
         answerPermissionRequest(request, PackageManager.PERMISSION_DENIED)
-        rule.awaitNode { onNodeWithText("Notifications are off, so the alarm can't show when time's up.") }
+        rule.awaitNode { onNodeWithText("Notifications are off, so the alarm can't show when time's up") }
             .performClick()
         val started = shadowOf(activity!!).nextStartedActivity
         assertEquals(Settings.ACTION_APP_NOTIFICATION_SETTINGS, started.action)
