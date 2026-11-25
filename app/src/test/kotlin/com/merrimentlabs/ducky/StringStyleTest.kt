@@ -14,8 +14,8 @@ import javax.xml.parsers.DocumentBuilderFactory
  * <string-array>, including the ones marked translatable="false":
  *
  * - A single sentence has no closing period. A block of two or more sentences keeps them.
- * - A trailing ellipsis only marks something in progress ("Ringing…"), never a label that
- *   opens a dialog or a screen.
+ * - A trailing ellipsis only marks something in progress, so the label's first word ends in
+ *   "-ing" ("Ringing…"). Never on a label that opens a dialog or a screen.
  * - Two parts are joined with a middle dot ( · ) or a comma, never an em dash, an en dash, a
  *   hyphen standing in for a dash (" - " or "--") or a semicolon.
  * - American spelling.
@@ -118,7 +118,7 @@ class StringStyleTest {
             t.endsWith("...") -> t.dropLast(3)
             else -> null
         }
-        if (ellipsis != null && !ellipsis.trimEnd().substringAfterLast(' ').endsWith("ing", ignoreCase = true)) {
+        if (ellipsis != null && !ellipsis.trim().substringBefore(' ').endsWith("ing", ignoreCase = true)) {
             found[Rule.ELLIPSIS] = "a trailing ellipsis on something that is not in progress"
         }
         if ('\u2014' in t || '\u2013' in t || " - " in t || "--" in t || Regex(";\\s").containsMatchIn(t)) {
@@ -172,6 +172,8 @@ class StringStyleTest {
         assertEquals(setOf(Rule.SINGLE_SENTENCE_PERIOD), rules("Allow notifications so the alarm can show."))
         assertEquals(setOf(Rule.ELLIPSIS), rules("Custom color…"))
         assertEquals(setOf(Rule.ELLIPSIS), rules("Edit name..."))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Choose a setting…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Settings…"))
         assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Working offline \u2014 using saved data"))
         assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Paused \u2013 tap to resume"))
         assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Paused; tap to resume"))
@@ -190,6 +192,7 @@ class StringStyleTest {
         for (good in listOf(
             "Ringing…",
             "Syncing...",
+            "Saving your timer…",
             "Open-source notices",
             "Wi-Fi and Bluetooth stay off",
             "Apache License 2.0",
