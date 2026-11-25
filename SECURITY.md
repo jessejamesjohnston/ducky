@@ -12,13 +12,22 @@ one-person project.
 
 Ducky requests no network permission of any kind and talks to no server, so its surface is small:
 
-- Ducky's own broadcast receivers and the ringing service, all declared `exported="false"`:
-  another app should not be able to start, stop or extend a timer. The APK also carries two
-  AndroidX library receivers (WorkManager's diagnostics and the profile installer) that are
-  exported but require the `android.permission.DUMP` permission, which only the system and
-  `adb` hold.
-- The launcher aliases and `MainActivity` behind them, which are exported because a launcher
-  must start them: they open the timer screen and take no input from the intent.
+- Ducky's own broadcast receivers (the timer receiver and the four widget receivers) and the
+  ringing service, all declared `exported="false"`: another app should not be able to start,
+  stop or extend a timer.
+- `MainActivity` and the twelve launcher aliases in front of it (one per icon color, one
+  enabled at a time), which are exported because a launcher must start them: they open the
+  timer screen and take no input from the intent.
+- Four exported components that AndroidX libraries add to the merged manifest. Each requires a
+  permission that only the system (and, for `DUMP`, `adb`) holds, so no app can reach them:
+  - Glance's `GlanceRemoteViewsService`, which supplies widget list items to the launcher,
+    requires `android.permission.BIND_REMOTEVIEWS`.
+  - WorkManager's `SystemJobService`, which the system job scheduler starts, requires
+    `android.permission.BIND_JOB_SERVICE`.
+  - WorkManager's `DiagnosticsReceiver` and the profile installer's `ProfileInstallReceiver`
+    require `android.permission.DUMP`.
+
+  No other library component is exported.
 - Links the app hands to other apps (Settings, About): fixed https pages and one `mailto:`
   address.
 - Backups: Android may copy the timer, the settings and the screen hints in a device backup
