@@ -459,13 +459,20 @@ class PondSim(seed: Int = 7, visitorRng: Random = Random.Default) {
         if (readoutTop.isNaN() || duckX.isNaN()) return 0f
         val top = readoutTop - dp(CREST_GAP_PAD_DP)
         val bottom = readoutBottom + dp(CREST_GAP_PAD_DP)
-        var dist = Float.MAX_VALUE
-        for (x in floatArrayOf(readoutLeft, (readoutLeft + readoutRight) / 2f, readoutRight)) {
-            val y = surfaceAt(x)
-            dist = min(dist, if (y < top) top - y else if (y > bottom) y - bottom else 0f)
-        }
+        // Runs every frame: three samples, unrolled, so nothing is allocated.
+        val dist = min(
+            bandDistance(surfaceAt(readoutLeft), top, bottom),
+            min(
+                bandDistance(surfaceAt((readoutLeft + readoutRight) / 2f), top, bottom),
+                bandDistance(surfaceAt(readoutRight), top, bottom),
+            ),
+        )
         return 1f - PondMath.smoothstep(0f, dp(CREST_GAP_FADE_DP), dist)
     }
+
+    /** How far [y] lies outside [top]..[bottom]; 0 inside. */
+    private fun bandDistance(y: Float, top: Float, bottom: Float): Float =
+        if (y < top) top - y else if (y > bottom) y - bottom else 0f
 
     private fun dodge(target: Float, lo: Float, hi: Float, restY: Float): Float {
         if (readoutTop.isNaN()) { dodgeSide = 0; return target }
