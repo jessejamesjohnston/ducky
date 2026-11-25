@@ -50,9 +50,10 @@ classes they depend on.
 - Ducky requests no network permission, and the build fails if any APK would carry one
   (`checkDebugManifestPermissions`, `checkReleaseManifestPermissions`). A change that needs the
   network is a change to what the app is, and to its privacy policy.
-- All user-facing text lives in `strings.xml`, in sentence case, with no closing period on a
-  single sentence, an ellipsis only on something in progress, American spelling and natural
-  contractions. `StringStyleTest` checks these rules on every build.
+- All user-facing text lives in `strings.xml`, in sentence case. `StringStyleTest` checks the
+  rest on every build: no closing period on a single sentence, an ellipsis only on something in
+  progress, a middle dot or a comma (never a dash or a semicolon) to join two parts, American
+  spelling and natural contractions.
 - Tests read as behavior: a test's name says what the app does. Fixtures are invented, never
   real accounts or personal data.
 - Comments say why, for a stranger reading the code later.

@@ -122,7 +122,7 @@ class StringStyleTest {
         if (ellipsis != null && !ellipsis.trimEnd().substringAfterLast(' ').endsWith("ing", ignoreCase = true)) {
             found[Rule.ELLIPSIS] = "a trailing ellipsis on something that is not in progress"
         }
-        if ('—' in t || '–' in t || Regex(";\\s").containsMatchIn(t)) {
+        if ('\u2014' in t || '\u2013' in t || Regex(";\\s").containsMatchIn(t)) {
             found[Rule.DASH_OR_SEMICOLON_JOIN] = "an em dash, en dash or semicolon join (use · or a comma)"
         }
         UK_SPELLINGS.find(t)?.let { found[Rule.UK_SPELLING] = "UK spelling \"${it.value}\"" }
@@ -172,8 +172,8 @@ class StringStyleTest {
         assertEquals(setOf(Rule.SINGLE_SENTENCE_PERIOD), rules("Allow notifications so the alarm can show."))
         assertEquals(setOf(Rule.ELLIPSIS), rules("Custom color…"))
         assertEquals(setOf(Rule.ELLIPSIS), rules("Edit name..."))
-        assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Working offline — using saved data"))
-        assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Paused – tap to resume"))
+        assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Working offline \u2014 using saved data"))
+        assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Paused \u2013 tap to resume"))
         assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Paused; tap to resume"))
         for (uk in listOf("Sign-in cancelled", "Pick a colour", "Favourites", "Odd behaviour", "Centre it", "Organise", "Recognised")) {
             assertEquals(uk, setOf(Rule.UK_SPELLING), rules(uk))
