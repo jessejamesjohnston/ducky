@@ -16,8 +16,8 @@ CI never sees the key and never builds a release; it builds and tests only.
   This is the form `keytool` and `scripts/release.sh --verify` print. `apksigner verify
   --print-certs` prints the same value in lowercase without colons:
   `4f86156a55922acd9698f0467d0009dd57cd1f4e9ed14e057d2486d4e26a4de2`
-- Never commit a keystore (`*.jks` and `*.keystore` are gitignored) and never put the password in
-  a file, `local.properties`, a command line or a log.
+- Never commit a keystore (`*.jks`, `*.keystore`, `*.p12` and `*.pfx` are gitignored) and never
+  put the password in a file, `local.properties`, a command line or a log.
 
 How Gradle gets the key: `app/build.gradle.kts` reads `ducky.keystore.{path,storePassword,
 keyAlias,keyPassword}` from `local.properties`, then Gradle properties, then the environment as

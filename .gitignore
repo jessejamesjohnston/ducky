@@ -4,6 +4,8 @@ local.properties
 *.keystore
 .idea/
 *.jks
+*.p12
+*.pfx
 *.apk
 *.aab
 .kotlin/
