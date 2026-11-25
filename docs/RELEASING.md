@@ -53,8 +53,10 @@ The script asks for the password. Without a terminal, set `DUCKY_KEYSTORE_PASS` 
 environment instead. It uses that one password for the keystore and the key, so your key password
 must equal your store password (keytool makes PKCS12 keystores that way). You can leave out
 `DUCKY_KEYSTORE_KEYALIAS` when your keystore holds a single key, or a key named `ducky`. Before it
-clones or builds anything, the script opens the keystore with that password and looks for the
-key, so a wrong password or alias stops it at once, without printing the password.
+clones or builds anything, the script opens the keystore with that password, looks for the key
+(the alias is matched without regard to case, as keystores do) and unlocks the key with the same
+password. A wrong password or alias, or a key whose password differs from the keystore's, stops
+it at once, without printing the password.
 
 ## Every release
 

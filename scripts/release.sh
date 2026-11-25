@@ -14,13 +14,13 @@
 #                            Default: the certificate of the published Ducky releases. Set it
 #                            to your own certificate when you sign with your own key.
 #
-# The password and the alias are checked against the keystore before anything is cloned or
-# built, so a wrong one fails at once. The tag is cloned into a temporary directory and built
-# there, so uncommitted changes and untracked files in this checkout never reach the release,
-# and the commit recorded inside the APK is the tag's. The password reaches keytool and Gradle
-# only through the environment: it is never printed, never put on a command line and never
-# written to disk, and Gradle runs without its daemon or configuration cache so it does not
-# outlive this run.
+# The password and the alias are checked against the keystore, and the password must unlock the
+# key, before anything is cloned or built, so a wrong one fails at once. The tag is cloned into
+# a temporary directory and built there, so uncommitted changes and untracked files in this
+# checkout never reach the release, and the commit recorded inside the APK is the tag's. The
+# password reaches keytool and Gradle only through the environment: it is never printed, never
+# put on a command line and never written to disk, and Gradle runs without its daemon or
+# configuration cache so it does not outlive this run.
 #
 # Output in dist/: ducky-<version>.apk, SHA256SUMS and ducky-<version>-mapping.txt (R8's map
 # from obfuscated names back to the source names; kept to read crash stack traces from this
@@ -38,21 +38,25 @@ SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 BUILD_TOOLS="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)"
 [[ -x "$BUILD_TOOLS/apksigner" ]] || die "no apksigner in $BUILD_TOOLS"
 
-cert_sha256() {
-    "$BUILD_TOOLS/apksigner" verify --print-certs "$1" | sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' | head -1 \
-        | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//'
-}
-
 # Every check a release APK must pass. $2, when given, is the commit the APK must record.
 # Prints what it checked; returns non-zero on any failure.
 verify() {
-    local apk="$1" want="${2:-}" fail=0 sha dn rev
+    local apk="$1" want="${2:-}" fail=0 out rc sha dn rev
     [[ -f "$apk" ]] || die "no APK at $apk"
 
     echo "== Signature"
-    "$BUILD_TOOLS/apksigner" verify --verbose "$apk" | grep -E "^Verified using|^Verifies" || true
-    sha=$(cert_sha256 "$apk")
-    dn=$("$BUILD_TOOLS/apksigner" verify --print-certs "$apk" | sed -n 's/^.*[Ss]igner.* certificate DN: //p' | head -1)
+    # One apksigner run: its exit status says whether the signature verifies at all (a modified
+    # APK does not), and its output names the signing certificate.
+    rc=0
+    out="$("$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$apk" 2>&1)" || rc=$?
+    if (( rc != 0 )); then
+        echo "  the signature does not verify (the APK was modified after signing, or is not signed)" >&2
+        sed -n 's/^ERROR: /  apksigner: /p' <<<"$out" | head -3 >&2
+        return 1
+    fi
+    grep -E "^Verified using|^Verifies" <<<"$out" || true
+    sha=$(sed -n 's/^.*[Ss]igner.* certificate SHA-256 digest: //p' <<<"$out" | head -1 | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//')
+    dn=$(sed -n 's/^.*[Ss]igner.* certificate DN: //p' <<<"$out" | head -1)
     echo "Certificate SHA-256: $sha"
     echo "Expected:            $EXPECTED_CERT"
     [[ "$sha" == "$EXPECTED_CERT" ]] || { echo "  not the expected certificate" >&2; fail=1; }
@@ -98,21 +102,31 @@ if [[ -z "${DUCKY_KEYSTORE_PASS:-}" ]]; then
     read -rsp "Keystore password: " DUCKY_KEYSTORE_PASS; echo >&2
 fi
 [[ -n "$DUCKY_KEYSTORE_PASS" ]] || die "empty keystore password"
-# Fail before Gradle if the password or alias is wrong (keytool reads the password from the environment).
+# Fail before Gradle if the password or alias is wrong. keytool reads the password from the
+# environment, and runs in English so its listing can be parsed the same way everywhere.
 export DUCKY_KEYSTORE_PASS
-KEYS="$(keytool -list -keystore "$STORE" -storepass:env DUCKY_KEYSTORE_PASS 2>/dev/null)" \
+keytool_en() { LC_ALL=C keytool -J-Duser.language=en -J-Duser.country=US "$@"; }
+KEYS="$(keytool_en -list -keystore "$STORE" -storepass:env DUCKY_KEYSTORE_PASS 2>/dev/null)" \
     || die "the keystore or its password did not check out"
-ALIASES="$(sed -n 's/^\([^,]*\), .*PrivateKeyEntry.*/\1/p' <<<"$KEYS")"
+# "alias, date, PrivateKeyEntry," per key. Keystores store aliases in lowercase.
+ALIASES="$(sed -n 's/^\([^,]*\),.*PrivateKeyEntry.*/\1/p' <<<"$KEYS")"
+[[ -n "$ALIASES" ]] || die "no private key in the keystore"
 if [[ -n "${DUCKY_KEYSTORE_KEYALIAS:-}" ]]; then
     ALIAS="$DUCKY_KEYSTORE_KEYALIAS"
-    grep -qxF "$ALIAS" <<<"$ALIASES" || die "no key named '$ALIAS' in the keystore (it holds: $(paste -sd, - <<<"$ALIASES"))"
+    # Keystore lookups ignore case, so MyKey names the key listed as mykey.
+    grep -qixF "$ALIAS" <<<"$ALIASES" || die "no key named '$ALIAS' in the keystore (it holds: $(paste -sd, - <<<"$ALIASES"))"
 elif [[ "$(grep -c . <<<"$ALIASES")" == 1 ]]; then
     ALIAS="$ALIASES"
-elif grep -qxF ducky <<<"$ALIASES"; then
+elif grep -qixF ducky <<<"$ALIASES"; then
     ALIAS=ducky
 else
     die "the keystore holds several keys ($(paste -sd, - <<<"$ALIASES")); set DUCKY_KEYSTORE_KEYALIAS to one"
 fi
+# The build uses the same password for the key. Unlocking the key proves it (the request
+# keytool writes is thrown away).
+keytool_en -certreq -keystore "$STORE" -alias "$ALIAS" -storepass:env DUCKY_KEYSTORE_PASS \
+    -keypass:env DUCKY_KEYSTORE_PASS >/dev/null 2>&1 \
+    || die "the password does not unlock the key '$ALIAS' (the key's password must equal the keystore's)"
 echo "release: signing with key '$ALIAS'"
 
 WORK="$(mktemp -d)"
