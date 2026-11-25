@@ -6,7 +6,7 @@ All notable changes to Ducky are recorded here. The format follows
 
 ## [Unreleased]
 
-## [0.28.0] - 2026-11-24
+## [0.28.0] - 2026-11-25
 
 The first public release.
 
