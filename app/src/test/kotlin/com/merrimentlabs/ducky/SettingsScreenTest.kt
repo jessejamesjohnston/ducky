@@ -191,6 +191,7 @@ class SettingsScreenTest {
     @Test
     fun `high contrast turns on and refreshes the widgets`() {
         show()
+        rule.onNodeWithText("Use stronger colors and text").assertExists()
         rule.onNodeWithText("High contrast").assertIsOff().performClick()
         rule.awaitStore(read = TimerStore::settings) { it.highContrast }
         rule.awaitStore(read = { widgetRefreshes.get() }) { it >= 1 }

@@ -68,7 +68,7 @@
     <string name="add_eggs_widget_subtitle">The eggs hatch one by one</string>
     <string name="a11y_add_widget_choice">Add the %1$s widget. %2$s.</string>
     <string name="high_contrast">High contrast</string>
-    <string name="high_contrast_subtitle">Stronger colors and text, easier to read</string>
+    <string name="high_contrast_subtitle">Use stronger colors and text</string>
     <string name="default_increments">Time buttons</string>
     <string name="section_style">Style</string>
     <string name="section_color">Color</string>
