@@ -51,9 +51,10 @@ fresh.
 
 The script asks for the password. Without a terminal, set `DUCKY_KEYSTORE_PASS` in the
 environment instead. It uses that one password for the keystore and the key, so your key password
-must equal your store password (keytool makes PKCS12 keystores that way). The alias defaults to
-`ducky`. The script does not check the password or the alias before it starts, so a wrong one
-fails during the Gradle build.
+must equal your store password (keytool makes PKCS12 keystores that way). You can leave out
+`DUCKY_KEYSTORE_KEYALIAS` when your keystore holds a single key, or a key named `ducky`. Before it
+clones or builds anything, the script opens the keystore with that password and looks for the
+key, so a wrong password or alias stops it at once, without printing the password.
 
 ## Every release
 
@@ -69,11 +70,17 @@ fails during the Gradle build.
      widget still draws its own picture;
    - the commit the Android Gradle Plugin records in `META-INF/version-control-info.textproto`
      is the tag's commit;
-   - the certificate SHA-256 equals the expected one.
+   - the certificate SHA-256 equals the expected one, and the APK is not signed with an Android
+     debug key.
 
    Only then does it write `dist/ducky-X.Y.Z.apk`, `dist/SHA256SUMS` and
-   `dist/ducky-X.Y.Z-mapping.txt`. The script has no mode for checking an APK it did not build;
-   for someone else's APK, compare `apksigner verify --print-certs` with the certificate above.
+   `dist/ducky-X.Y.Z-mapping.txt`.
+
+   To check an APK the script did not just build (a download from the releases page, or a copy
+   someone sent you), run `scripts/release.sh --verify path/to/ducky.apk`. It needs no keystore
+   and no tag: it checks the signature and the certificate SHA-256 (the official one, or
+   `DUCKY_EXPECTED_CERT`), refuses a debug-signed APK, and prints the commit the APK records,
+   which you can compare with the release's tag.
 
    The mapping file is R8's map from the release build's shortened class and method names back
    to the source names. A crash report from a release install is unreadable without it, and
