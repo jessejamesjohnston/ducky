@@ -7,7 +7,7 @@
 <p align="center"><b>The kitchen timer you can’t miss.</b></p>
 
 <p align="center">
-  A timer for Android phones, tablets and large screens that you set by adding time, with a pond that drains as it counts down.
+  A timer for Android phones, tablets and Googlebooks that you set by adding time, with a pond that drains as it counts down.
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
   &nbsp;·&nbsp; <a href="#install">Install</a>
 </p>
 
-<p align="center"><sub>Android 14 or newer · phones, tablets and large screens · no internet permission · Apache License 2.0</sub></p>
+<p align="center"><sub>Android 14 or newer · phones, tablets and Googlebooks · no internet permission · Apache License 2.0</sub></p>
 
 <p align="center">
   <img src="docs/images/hero.png" width="880" alt="Ducky on three screens: a wide window with the pond on the left and the add-time buttons on the right, a phone showing 0:37 left with a yellow duck floating on the draining water, and a home screen with all four widgets counting down: water tank, bubbles, lily pads and egg timer">
