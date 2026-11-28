@@ -1,5 +1,6 @@
 package com.merrimentlabs.ducky
 
+import androidx.compose.ui.semantics.Role
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -27,8 +28,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Settings > About > Open-source notices: Ducky's own card, then one card per library, one
- * card open at a time. The data comes from the real res/raw/aboutlibraries.json
+ * Settings > About > Open-source notices: Ducky's own row, then one row per component; each
+ * row opens a page of its license text. The data comes from the real res/raw/aboutlibraries.json
  * (OpenSourceLicensesTest checks the file itself).
  */
 @RunWith(RobolectricTestRunner::class)
@@ -63,10 +64,8 @@ class LicensesScreenTest {
         rule.awaitNode(timeoutMs = 20_000) { onNode(hasText(firstLibrary)) }
     }
 
-    private fun state(value: String) = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value)
-
-    /** The clickable header row of the card titled [name] (its merged node carries the state). */
-    private fun card(name: String) = rule.onNode(hasText(name) and SemanticsMatcher.keyIsDefined(SemanticsProperties.StateDescription))
+    /** The clickable row titled [name] (its merged node carries the Button role). */
+    private fun row(name: String) = rule.onNode(hasText(name) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
 
     private fun scrollTo(text: String) {
         rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(text))
@@ -74,54 +73,50 @@ class LicensesScreenTest {
     }
 
     @Test
-    fun `Ducky's own card opens to the NOTICE lines and the Apache text, and closes again`() {
+    fun `Ducky's own row opens a page with the NOTICE lines and the Apache text, and Back returns`() {
         show()
         rule.onNodeWithText("Open-source notices").assertExists()
-        card("Ducky").assert(state("Collapsed")).assert(hasText("Apache License 2.0"))
+        row("Ducky").assert(hasText("Apache License 2.0"))
         rule.onNodeWithText("Copyright 2026 Jesse Johnston", substring = true).assertDoesNotExist()
 
-        card("Ducky").performClick()
+        row("Ducky").performClick()
         rule.awaitNode { onNodeWithText("Copyright 2026 Jesse Johnston", substring = true) }
-        card("Ducky").assert(state("Expanded"))
-        // The license name, then its full (reflowed) text.
         rule.onNodeWithText("TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION", substring = true)
             .assertExists()
+        rule.onNodeWithText("Open-source notices").assertDoesNotExist()
 
-        card("Ducky").performClick()
-        rule.pump(2)
-        card("Ducky").assert(state("Collapsed"))
-        rule.onNodeWithText("Copyright 2026 Jesse Johnston", substring = true).assertDoesNotExist()
+        rule.onNodeWithContentDescription("Back").performClick()
+        rule.awaitNode { onNodeWithText("Open-source notices") }
+        assertEquals("Back on a page returns to the list, not out of the screen", 0, backs.get())
     }
 
     @Test
-    fun `a library card shows version and license, and opening it closes the open one`() {
+    fun `a library row shows version and license and opens its own page`() {
         val core = notices.libraries.first { it.id == "androidx.core:core" }
         val subtitle = "${core.version} · ${core.licenses.joinToString(", ") { it.name }}"
         show()
-        card("Ducky").performClick()
-        rule.awaitNode { onNodeWithText("Copyright 2026 Jesse Johnston", substring = true) }
-
         scrollTo(core.name)
-        card(core.name).assert(hasText(subtitle)).assert(state("Collapsed")).performClick()
+        row(core.name).assert(hasText(subtitle)).performClick()
         rule.awaitNode { onNodeWithText(core.id) }
-        card(core.name).assert(state("Expanded"))
-        // One card open at a time: Ducky's closed.
-        rule.onNodeWithText("Copyright 2026 Jesse Johnston", substring = true).assertDoesNotExist()
-        scrollTo("Ducky")
-        card("Ducky").assert(state("Collapsed"))
+        rule.onNodeWithText(core.name).assertExists()
     }
 
     @Test
-    fun `Material Symbols has no version, so its card shows just the license`() {
+    fun `Material Symbols has no version, so its row shows just the license`() {
         show()
         scrollTo("Material Symbols")
-        // Other cards read "1.2.3 · Apache License 2.0"; this one is the bare license name.
-        card("Material Symbols").assert(hasText("Apache License 2.0")).assert(!hasText("·", substring = true))
-        card("Material Symbols").performClick()
+        // Other rows read "1.2.3 · Apache License 2.0"; this one is the bare license name.
+        row("Material Symbols").assert(hasText("Apache License 2.0")).assert(!hasText("·", substring = true))
+        row("Material Symbols").performClick()
         rule.awaitNode { onNodeWithText(OpenSourceLicenses.MATERIAL_SYMBOLS_ID) }
-        card("Material Symbols").assert(state("Expanded")).performClick()
-        rule.pump(2)
-        rule.onNodeWithText(OpenSourceLicenses.MATERIAL_SYMBOLS_ID).assertDoesNotExist()
+    }
+
+    @Test
+    fun `the bundled typeface is listed under its own license`() {
+        show()
+        scrollTo("Figtree")
+        row("Figtree").assert(hasText("SIL Open Font License 1.1", substring = true)).performClick()
+        rule.awaitNode { onNodeWithText("SIL OPEN FONT LICENSE Version 1.1", substring = true) }
     }
 
     @Test
@@ -130,9 +125,9 @@ class LicensesScreenTest {
         assertEquals(sorted.sortedWith(String.CASE_INSENSITIVE_ORDER), sorted)
         show()
         scrollTo(sorted.last())
-        card(sorted.last()).assertExists()
+        row(sorted.last()).assertExists()
         scrollTo(sorted.first())
-        card(sorted.first()).assertExists()
+        row(sorted.first()).assertExists()
     }
 
     @Test
@@ -143,13 +138,10 @@ class LicensesScreenTest {
     }
 
     @Test
-    fun `London capitalizes the title and Seoul uses the big header`() {
+    fun `London capitalizes the title and the label`() {
         runBlocking { TimerStore.setStyle(app, "london") }
         show()
         rule.awaitNode { onNodeWithText("OPEN-SOURCE NOTICES") }
         rule.onNodeWithText("LIBRARIES").assertExists()
-        runBlocking { TimerStore.setStyle(app, "seoul") }
-        rule.awaitNode { onNodeWithText("Open-source notices") }
-        rule.onNodeWithText("Libraries").assertExists()
     }
 }

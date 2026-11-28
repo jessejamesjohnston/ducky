@@ -4,7 +4,40 @@ All notable changes to Ducky are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow the app's
 `versionName`. Earlier versions were private test builds and were not published.
 
-## [Unreleased]
+## [0.28.1] - 2026-11-28
+
+### Changed
+
+- Settings has the same spacing as Merriment Labs' other apps: the title sits beside the back
+  arrow, every card has a label above it (the first is now "Alarm"), rows are more compact, and in
+  a large window the column is up to 720dp wide with wider margins.
+- With a keyboard, the focused control shows a 3dp ring in the accent color (or in the text color,
+  where a pale accent wouldn't stand out), not only a darker fill.
+- Interface text is set in Figtree, the typeface of Merriment Labs' other apps; the clock keeps
+  each style's own face.
+- On a Chromebook or Googlebook the window asks for about 1040 x 700dp, its caption bar takes the
+  page color, and Ctrl+comma (Settings) appears in the system's keyboard shortcuts list.
+- Before Android asks for notifications, Ducky says why and waits for Continue (or Not now). A
+  setting to turn on in Android now reads "Open Settings", and a second ask "Allow notifications".
+- Open-source notices lists each component as a row that opens a page of its license text, which
+  can be selected and copied.
+- The custom color dialog uses the standard dialog buttons.
+- Settings says what Android's device backup copies.
+- A new widget lands at 3 × 2, the size and layout its preview shows, instead of a one-row strip.
+  It can still be resized down to the strip.
+- Links in Settings, About open in a browser tab over Ducky on phones, foldables and tablets, and
+  as a normal tab in your browser on a Chromebook or Googlebook. Where no browser offers in-app
+  tabs, they open in the browser as before.
+- The tagline on the About screen uses a curly apostrophe, as it does on the website and in the
+  README.
+
+### Fixed
+
+- The minus buttons under Time buttons line up in one column whatever the values beside them.
+- A widget's stopped clock (no timer, paused, or ringing) told accessibility services a time that
+  kept counting while it showed 00:00 or the paused time. It now reports the time it shows.
+- A paused widget showed one second less than the app, the notification and the screen reader
+  said (04:48 against "4 minutes 49 seconds"). All of them now round a part second up.
 
 ## [0.28.0] - 2026-11-25
 

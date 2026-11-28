@@ -1,5 +1,8 @@
 package com.merrimentlabs.ducky.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.RectangleShape
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -10,32 +13,27 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -65,63 +63,47 @@ fun SettingsScreen(
     val settings by TimerStore.settingsFlow(context).collectAsState(initial = null)
     val s = settings ?: return
     val style = LocalAppStyle.current
-    val haptic = rememberHaptic()
 
-    // Centered, width-capped so cards don't stretch edge-to-edge on tablets.
-    // Order matters: widthIn must cap the incoming max BEFORE fillMaxWidth
-    // fills it: the reverse fills to the full screen first and can't shrink.
-    val colModifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .verticalScroll(scrollState)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = colModifier.padding(horizontal = 8.dp, vertical = 6.dp)
-        ) {
-            IconButton(onClick = { haptic(); onBack() }) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_back),
-                    contentDescription = stringResource(R.string.back),
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-        // Seoul: a large centered header, with the content pushed down within thumb reach.
-        if (style.bigHeader) {
-            Text(
-                text = stringResource(R.string.settings_title),
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Normal,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                modifier = colModifier.padding(top = 34.dp, bottom = 52.dp)
-            )
-        } else {
-            Text(
-                text = stringResource(R.string.settings_title)
-                    .let { if (style.upperCaseLabels) it.uppercase() else it },
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = style.clockFont,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = colModifier.padding(start = 24.dp, bottom = 18.dp)
-            )
-        }
-
+    // A centered column, width-capped so cards don't stretch edge to edge in a wide window, with
+    // the house margins (SettingsMetrics). Order matters: widthIn must cap the incoming max BEFORE
+    // fillMaxWidth fills it, and the side padding sits inside the cap.
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val colModifier = Modifier
+            .widthIn(max = SettingsMetrics.COLUMN_MAX)
+            .fillMaxWidth()
+            .padding(horizontal = SettingsMetrics.side(maxWidth))
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = colModifier.padding(horizontal = 16.dp)
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxSize()
+                .windowTopInset()
+                .navigationBarsPadding()
+                .verticalScroll(scrollState)
+                .padding(top = SettingsMetrics.PAGE_TOP, bottom = SettingsMetrics.PAGE_BOTTOM)
         ) {
-            AlarmCard(s, onBack)
-            TimeButtonsCard(s.incrementsSeconds)
-            StyleCard(selectedKey = s.styleKey)
-            ColorCard(seedArgb = s.seedColorArgb)
-            AboutCard(revealAbout, onAboutRevealed, onOpenLicenses)
+            if (style.bigHeader) {
+                // Seoul: a large centered header, with the content pushed down within thumb reach.
+                // Its size is the style's character, like the clock's face.
+                Row(modifier = colModifier) { BackButton(onBack) }
+                Text(
+                    text = stringResource(R.string.settings_title),
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    modifier = colModifier.padding(top = 32.dp, bottom = 48.dp)
+                )
+            } else {
+                TopBar(title = stringResource(R.string.settings_title), onBack = onBack, modifier = colModifier)
+            }
+            Column(modifier = colModifier) {
+                SectionLabel(stringResource(R.string.section_alarm))
+                AlarmCard(s, onBack)
+                TimeButtonsCard(s.incrementsSeconds)
+                StyleCard(selectedKey = s.styleKey)
+                ColorCard(seedArgb = s.seedColorArgb)
+                AboutCard(revealAbout, onAboutRevealed, onOpenLicenses)
+            }
         }
     }
 }
@@ -172,6 +154,7 @@ private fun AlarmCard(s: TimerSettings, onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
+                .focusRing(RectangleShape, focusRingColor())
                 .clickable {
                     val current = s.soundUri?.let(Uri::parse)
                         ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
@@ -193,26 +176,13 @@ private fun AlarmCard(s: TimerSettings, onBack: () -> Unit) {
                         }
                     )
                 }
-                .padding(horizontal = 18.dp, vertical = 16.dp)
+                .rowPadding()
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.alarm_sound),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = soundTitle,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                RowTitle(stringResource(R.string.alarm_sound))
+                RowSubtitle(soundTitle)
             }
-            Text(
-                text = "›",
-                fontSize = 24.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            RowChevron()
         }
         SettingsDivider()
         SettingsToggleRow(

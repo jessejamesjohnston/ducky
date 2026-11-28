@@ -1,5 +1,7 @@
 package com.merrimentlabs.ducky.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,10 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,7 +95,7 @@ internal fun ColorCard(seedArgb: Int) {
         )
     }
 
-    Column(modifier = Modifier.padding(bottom = 24.dp)) {
+    Column {
         SectionLabel(stringResource(R.string.section_color))
         SettingsCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -130,6 +130,7 @@ internal fun ColorCard(seedArgb: Int) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .focusRing(CircleShape, focusRingColor())
                     .clip(CircleShape)
                     .clickable { haptic(); showWheel = true }
                     .padding(vertical = 6.dp)
@@ -154,10 +155,9 @@ internal fun ColorCard(seedArgb: Int) {
                         if (isCustom) R.string.custom_color_change
                         else R.string.custom_color
                     ),
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(start = 14.dp)
+                    modifier = Modifier.padding(start = 16.dp)
                 )
             }
         }
@@ -209,6 +209,7 @@ private fun StylePreviewTile(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .height(76.dp)
+            .focusRing(shape, focusRingColor(bg))
             .clip(shape)
             .then(
                 if (gradient != null) Modifier.background(gradient)
@@ -219,6 +220,7 @@ private fun StylePreviewTile(
             .clickable(role = Role.Button, onClick = onClick)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // A preview of the style's clock: its own face and size, like the clock itself.
             Text(
                 text = "1:00",
                 fontSize = 17.sp,
@@ -229,9 +231,8 @@ private fun StylePreviewTile(
             )
             Text(
                 text = if (style.upperCaseLabels) name.uppercase() else name,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = style.clockFont,
+                style = MaterialTheme.typography.labelMedium,
+                fontFamily = style.labelFont,
                 color = fg,
                 maxLines = 1
             )
@@ -247,6 +248,7 @@ private fun ColorSwatch(color: Color, name: String, selected: Boolean, onClick: 
         contentAlignment = Alignment.Center,
         modifier = Modifier
             .size(46.dp)
+            .focusRing(CircleShape, focusRingColor(color))
             .clip(CircleShape)
             .background(color)
             .then(
@@ -258,7 +260,7 @@ private fun ColorSwatch(color: Color, name: String, selected: Boolean, onClick: 
             .clickable(role = Role.Button, onClick = onClick)
     ) {
         if (selected) {
-            Text(text = "✓", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(text = "✓", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -1,5 +1,12 @@
 package com.merrimentlabs.ducky
 
+import com.merrimentlabs.ducky.ui.windowTopInset
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.merrimentlabs.ducky.ui.focusRingShown
+import androidx.compose.foundation.shape.CircleShape
+import com.merrimentlabs.ducky.ui.focusRingColor
+import com.merrimentlabs.ducky.ui.focusRing
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,7 +26,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -32,12 +38,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,7 +57,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -120,11 +123,14 @@ internal fun TimerScreen(
     // when the answer changes.
     var blocker by remember { mutableStateOf<AlarmBlocker?>(null) }
     // Notifications are asked for the first time a timer is set here (started in the app, or
-    // found running from a widget), with the reason on the banner while the dialog is up.
+    // found running from a widget): first the reason on the banner, then Android's dialog
+    // from its Continue.
     // Before that, missing notifications are not reported: nothing is set that could ring.
     var askPending by remember { mutableStateOf(NotificationAsk.pending(context)) }
     // Saveable: a rotation while the system dialog is up keeps the reason on the banner.
     var asking by rememberSaveable { mutableStateOf(false) }
+    // The reason is on screen with Not now and Continue; Android's dialog waits for Continue.
+    var explaining by rememberSaveable { mutableStateOf(false) }
     // Notifications off and Android still shows its dialog: the card asks there, no Settings trip.
     var askAgain by remember { mutableStateOf(false) }
     // "Not now" on the full-screen tip: the alarm still rings and shows its card without it.
@@ -132,7 +138,7 @@ internal fun TimerScreen(
     LifecycleResumeEffect(Unit) {
         blocker = AlarmReadiness.check(context)
         askPending = NotificationAsk.pending(context)
-        askAgain = canAskNotifications()
+        askAgain = canAskNotifications() || NotificationAsk.deferred(context)
         onPauseOrDispose { }
     }
     // The answer came back (with or without a dialog): show what is true now.
@@ -141,20 +147,17 @@ internal fun TimerScreen(
             asking = false
             blocker = AlarmReadiness.check(context)
             askPending = NotificationAsk.pending(context)
-            askAgain = canAskNotifications()
+            askAgain = canAskNotifications() || NotificationAsk.deferred(context)
         }
     }
     // A ring counts as "set" too: Test alarm before any timer, or opening the app to a ring
     // started from a widget, is exactly when notifications matter.
     val timerSet = running || paused || s.isRinging
     LaunchedEffect(timerSet) {
-        if (timerSet && NotificationAsk.pending(context)) {
-            asking = true
-            askPending = false
-            onAskNotifications()
-        }
+        if (timerSet && NotificationAsk.pending(context) && !asking) explaining = true
     }
     val shownBlocker = when {
+        explaining -> AlarmBlocker.NOTIFICATIONS_OFF
         blocker == AlarmBlocker.NOTIFICATIONS_OFF && askPending -> null
         blocker == AlarmBlocker.FULL_SCREEN_OFF && fullScreenTipDismissed -> null
         else -> blocker
@@ -192,10 +195,27 @@ internal fun TimerScreen(
         blocker = shownBlocker,
         askingNotifications = asking,
         askAgain = askAgain,
+        explainingNotifications = explaining,
+        onContinueAsk = {
+            haptic()
+            explaining = false
+            asking = true
+            askPending = false
+            onAskNotifications()
+        },
         onDismissBlocker = {
             haptic()
-            FullScreenTip.dismiss(context)
-            fullScreenTipDismissed = true
+            if (explaining) {
+                // Not now: nothing was asked, so Android would still show its dialog; the banner
+                // says what won't work and offers "Allow notifications", after every resume too.
+                NotificationAsk.defer(context)
+                explaining = false
+                askPending = false
+                askAgain = true
+            } else {
+                FullScreenTip.dismiss(context)
+                fullScreenTipDismissed = true
+            }
         },
         increments = increments,
         context = context,
@@ -213,13 +233,12 @@ internal fun TimerScreen(
 private fun Header(style: AppStyle, onSettings: (() -> Unit)?) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 10.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp)
     ) {
         Text(
             text = stringResourceStyled(stringResource(R.string.app_name), style.upperCaseLabels),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Medium,
-            fontFamily = style.clockFont,
+            style = MaterialTheme.typography.headlineSmall,
+            fontFamily = style.labelFont,
             color = MaterialTheme.colorScheme.onSurface
         )
         Box(modifier = Modifier.weight(1f))
@@ -230,7 +249,7 @@ private fun Header(style: AppStyle, onSettings: (() -> Unit)?) {
 
 @Composable
 private fun SettingsButton(onSettings: () -> Unit, modifier: Modifier = Modifier) {
-    IconButton(onClick = onSettings, modifier = modifier) {
+    IconButton(onClick = onSettings, modifier = modifier.focusRing(CircleShape, focusRingColor())) {
         Icon(
             painter = painterResource(R.drawable.ic_settings),
             contentDescription = stringResource(R.string.a11y_open_settings),
@@ -258,6 +277,8 @@ private fun PondScreen(
     blocker: AlarmBlocker?,
     askingNotifications: Boolean,
     askAgain: Boolean,
+    explainingNotifications: Boolean,
+    onContinueAsk: () -> Unit,
     onDismissBlocker: () -> Unit,
     increments: List<Int>,
     context: android.content.Context,
@@ -291,7 +312,7 @@ private fun PondScreen(
             }
         ) {
             Pond(sim, s, colors, reduced, style.cardCorner, Modifier.matchParentSize(), squareBottomCorners = besideControls)
-            Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+            Column(modifier = Modifier.fillMaxSize().windowTopInset()) {
                 Column(
                     modifier = Modifier.onGloballyPositioned {
                         sim.headerBottom = it.positionInRoot().y + it.size.height - sim.originY
@@ -300,7 +321,10 @@ private fun PondScreen(
                     // Beside the controls the cog moves to the window's top end (over them).
                     Header(style, onSettings = if (besideControls) null else onSettings)
                     blocker?.let {
-                        AlarmBlockedBanner(it, style, askingNotifications, askAgain, onFix = { onFix(it) }, onDismiss = onDismissBlocker)
+                        AlarmBlockedBanner(
+                            it, style, askingNotifications, askAgain, onFix = { onFix(it) }, onDismiss = onDismissBlocker,
+                            explaining = explainingNotifications, onContinue = onContinueAsk,
+                        )
                     }
                 }
                 // The press ripple is replaced by the pond's own splash, so keyboard focus
@@ -318,6 +342,8 @@ private fun PondScreen(
                                 .border(3.dp, colors.inkAbove, RoundedCornerShape(style.cardCorner))
                             else Modifier
                         )
+                        // Its own 3dp ring (above), in the ink that reads on the water.
+                        .semantics { focusRingShown = focused }
                         .clickable(
                             interactionSource = press,
                             indication = null,
@@ -348,7 +374,7 @@ private fun PondScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .statusBarsPadding()
+                        .windowTopInset()
                         .navigationBarsPadding()
                         .padding(end = 8.dp)
                 ) {
@@ -356,10 +382,10 @@ private fun PondScreen(
                         Controls(increments, running, paused, s, context, onIncrement, onCancel, onStop, onExtend, grow)
                     }
                     // The header's cog, at the window's top end: same row height and inset as
-                    // the header (10 dp down, 22 dp in, less this pane's 8 dp end padding).
+                    // the header (10 dp down, 24 dp in, less this pane's 8 dp end padding).
                     SettingsButton(
                         onSettings,
-                        Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 14.dp),
+                        Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 16.dp),
                     )
                 }
             }
@@ -375,7 +401,7 @@ private fun PondScreen(
                         .widthIn(max = 520.dp + (STACKED_MAX_WIDTH - 520.dp) * grow)
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .padding(top = 14.dp)
+                        .padding(top = 12.dp)
                 ) {
                     Controls(increments, running, paused, s, context, onIncrement, onCancel, onStop, onExtend, grow)
                 }
@@ -463,9 +489,8 @@ private fun ReadoutLayer(
         )
         Text(
             text = hint,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Medium,
-            fontFamily = style.clockFont,
+            style = MaterialTheme.typography.titleMedium,
+            fontFamily = style.labelFont,
             color = softInk,
         )
     }

@@ -95,6 +95,12 @@ enum class AppStyle(
 
     val tileShape: Shape get() = RoundedCornerShape(tileCorner)
 
+    /**
+     * The face this style gives its labels and titles, or null for the theme's interface face
+     * (Figtree). Only London letters them in its monospace.
+     */
+    val labelFont: FontFamily? get() = clockFont.takeIf { it != FontFamily.Default }
+
     /** Small controls (steppers): circle when the style is pill-based. */
     val controlShape: Shape
         get() = if (tileCorner >= 100.dp) CircleShape
@@ -287,6 +293,6 @@ fun TimerTheme(content: @Composable () -> Unit) {
         else Palette.light(seed, style.monochrome, hc)
     }
     CompositionLocalProvider(LocalAppStyle provides style) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = DuckyTypography, content = content)
     }
 }

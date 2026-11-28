@@ -20,7 +20,7 @@
 <p align="center"><sub>Android 14 or newer · phones, tablets and Googlebooks · no internet permission · Apache License 2.0</sub></p>
 
 <p align="center">
-  <img src="docs/images/hero.png" width="880" alt="Ducky on three screens: a wide window with the pond on the left and the add-time buttons on the right, a phone showing 0:37 left with a yellow duck floating on the draining water, and a home screen with all four widgets counting down: water tank, bubbles, lily pads and egg timer">
+  <img src="docs/images/hero.png" width="880" alt="Ducky on three screens: a wide window with the pond on the left and the add-time buttons on the right, a phone showing 0:37 left with a yellow duck floating on the draining water, and a home screen with two of the four widgets at the size they land, 3 by 2, counting down: water tank and bubbles">
 </p>
 
 ## What it does
@@ -41,13 +41,13 @@ Ducky runs one timer at a time. It is a timer, not a clock app, so there is no s
   <tr>
     <td width="25%"><img src="docs/images/pond.png" alt="The pond screen: 0:37 left, the duck floating on water that fills the lower half of the pond, with +30s, +1m, +5m and Cancel buttons below"></td>
     <td width="25%"><img src="docs/images/alarm.png" alt="The full-screen alarm at 0:00 with a +1 min button and a Stop button"></td>
-    <td width="25%"><img src="docs/images/widgets.png" alt="A home screen with all four Ducky widgets counting down: a water tank, a row of bubbles, lily pads with the duck hopping toward the bank, and a nest of hatching eggs"></td>
+    <td width="25%"><img src="docs/images/widgets.png" alt="A home screen with two Ducky widgets at the size they land, 3 by 2, counting down with +30s, +1m and +5m buttons: a water tank, and a row of bubbles popping one by one"></td>
     <td width="25%"><img src="docs/images/settings.png" alt="Settings: alarm sound, vibrate, Test alarm, Add widget, high contrast and the three button amounts"></td>
   </tr>
   <tr>
     <td>The pond drains with the time left.</td>
     <td>The alarm, over the lock screen too.</td>
-    <td>The four widgets.</td>
+    <td>Two of the four widgets.</td>
     <td>Settings.</td>
   </tr>
 </table>
@@ -60,7 +60,7 @@ The screenshots come from release builds on the Android emulator; [tools/](tools
 
 ## Your data
 
-Ducky collects nothing. It requests no network permission of any kind (the build fails if a library tries to add one), and it has no accounts, ads, analytics or crash reporting. It keeps the running timer, your settings and two small screen hints (whether it has asked for notifications, and when you hid the full-screen alarm tip) in its private storage on your device. [How Ducky works](docs/ARCHITECTURE.md#what-ducky-keeps) lists every file. If device backup is on, Android itself may copy them to your Google account. The timer screen reads the motion sensor to tilt the water; the reading is used for drawing only and is never stored. The links in Settings, About open in your browser or mail app, not in Ducky. The [privacy policy](https://merrimentlabs.com/privacy/ducky) has the details.
+Ducky collects nothing. It requests no network permission of any kind (the build fails if a library tries to add one), and it has no accounts, ads, analytics or crash reporting. It keeps the running timer, your settings and three small screen hints (whether it has asked for notifications, whether you chose Not now before it did, and when you hid the full-screen alarm tip) in its private storage on your device. [How Ducky works](docs/ARCHITECTURE.md#what-ducky-keeps) lists every file. If device backup is on, Android itself may copy them to your Google account. The timer screen reads the motion sensor to tilt the water; the reading is used for drawing only and is never stored. The links in Settings, About open in your browser or mail app: on a phone, foldable or tablet as a browser tab over Ducky, and on a Chromebook or Googlebook as a normal tab in your browser. Where no browser offers in-app tabs, they open in the browser itself. Ducky itself loads nothing. The [privacy policy](https://merrimentlabs.com/privacy/ducky) has the details.
 
 ## Install
 
@@ -86,7 +86,7 @@ Ducky is one Kotlin module with Jetpack Compose for the app and Glance for the w
 
 **Ringing.** It is a foreground service that plays the alarm on the alarm audio stream and stays up until you choose Stop or +1 min. Each Stop and +1 min carries the ring it belongs to, so a late tap can never silence a newer alarm.
 
-**Tests.** 420 unit tests (JUnit and Robolectric) cover the controller's state changes and ringing rules, recovery after a reboot, update or clock change, the pond's level and motion math, the duck's glide, widget layout and rendering, launcher icon aliases, the About links and the open-source license list. They cover 99.3% of lines, and CI fails the build under 95% or on any compiler or lint warning. Release builds are minified with R8 and checked on the Android emulator at phone, tablet and large-screen sizes, and the app has been used on a Pixel phone day to day through development.
+**Tests.** 460 unit tests (JUnit and Robolectric) cover the controller's state changes and ringing rules, recovery after a reboot, update or clock change, the pond's level and motion math, the duck's glide, widget layout and rendering, launcher icon aliases, the About links and the open-source license list. They cover 99.1% of lines, and CI fails the build under 95% or on any compiler or lint warning. Release builds are minified with R8 and checked on the Android emulator at phone, tablet and large-screen sizes, and the app has been used on a Pixel phone day to day through development.
 
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the rules the code keeps, and why.
 

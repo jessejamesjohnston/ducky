@@ -1,0 +1,15 @@
+{
+  "uniqueId": "figtree",
+  "artifactVersion": "1.312",
+  "name": "Figtree",
+  "description": "The typeface of Ducky's interface text.",
+  "website": "https://github.com/erikdkennedy/figtree",
+  "developers": [
+    {
+      "name": "The Figtree Project Authors"
+    }
+  ],
+  "licenses": [
+    "OFL-1.1"
+  ]
+}

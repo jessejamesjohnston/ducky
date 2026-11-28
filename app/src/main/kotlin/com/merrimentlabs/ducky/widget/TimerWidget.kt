@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.unit.dp
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.glance.GlanceId
@@ -60,6 +59,25 @@ enum class WidgetLook {
 
 internal val LocalLook = staticCompositionLocalOf { WidgetLook.TANK }
 
+/** The layout a widget draws for the box the launcher gives it. */
+internal enum class WidgetForm {
+    /** Picture above three time buttons: 130 dp tall or more, 200 dp wide or more. */
+    STACKED_THREE,
+    /** Picture above two time buttons: 130 dp tall or more, under 200 dp wide. */
+    STACKED_TWO,
+    /** One row, the time box beside three buttons: under 130 dp tall, 250 dp wide or more. */
+    BAR,
+    /** One row, the time box beside one button: under 130 dp tall and 250 dp wide. */
+    COMPACT,
+}
+
+/** Picks the layout for a box of [widthDp] by [heightDp], as the launcher reports it. */
+internal fun widgetFormFor(widthDp: Float, heightDp: Float): WidgetForm = when {
+    heightDp >= 130f -> if (widthDp >= 200f) WidgetForm.STACKED_THREE else WidgetForm.STACKED_TWO
+    widthDp >= 250f -> WidgetForm.BAR
+    else -> WidgetForm.COMPACT
+}
+
 open class TimerWidget(private val look: WidgetLook = WidgetLook.TANK) : GlanceAppWidget() {
 
     override val stateDefinition: GlanceStateDefinition<Preferences> = TimerWidgetState
@@ -82,14 +100,11 @@ open class TimerWidget(private val look: WidgetLook = WidgetLook.TANK) : GlanceA
             GlanceTheme(colors = colors) {
               CompositionLocalProvider(LocalLook provides look) {
                 val size = LocalSize.current
-                when {
-                    size.height >= 130.dp -> StackedWidget(
-                        state, settings, style,
-                        maxIncrements = if (size.width >= 200.dp) 3 else 2,
-                        fontSp = if (size.width >= 200.dp) 13 else 12,
-                    )
-                    size.width >= 250.dp -> BarWidget(state, settings, style)
-                    else -> CompactWidget(state, settings, style)
+                when (widgetFormFor(size.width.value, size.height.value)) {
+                    WidgetForm.STACKED_THREE -> StackedWidget(state, settings, style, maxIncrements = 3, fontSp = 13)
+                    WidgetForm.STACKED_TWO -> StackedWidget(state, settings, style, maxIncrements = 2, fontSp = 12)
+                    WidgetForm.BAR -> BarWidget(state, settings, style)
+                    WidgetForm.COMPACT -> CompactWidget(state, settings, style)
                 }
               }
             }

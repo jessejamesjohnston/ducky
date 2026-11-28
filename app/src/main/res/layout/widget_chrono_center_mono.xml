@@ -1,17 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The widget clock in the London style (monospace digits). See widget_chrono_center. -->
-<!-- Hidden from TalkBack: a Chronometer speaks its own duration (now minus base), never its
-     text, so a stopped clock showing 00:00 read as "2 seconds". The time box around it carries
-     the spoken state for every mode. -->
-<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/widget_chrono"
+<!-- Two views in one slot with the same text settings, so they have the same size: the
+     Chronometer ticks while a timer runs, and the TextView shows a stopped time (idle, paused,
+     ringing). A Chronometer describes itself as a duration (now minus its base), not as its
+     text, so a stopped one showing 00:00 reported a climbing "N seconds" to accessibility. The
+     hidden view is INVISIBLE, which keeps its size and takes it out of the accessibility tree.
+     Both stay hidden from TalkBack: the time box around them speaks the state in every mode. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:gravity="center"
-    android:importantForAccessibility="no"
-    android:countDown="true"
-    android:fontFamily="monospace"
-    android:fontFeatureSettings="tnum"
-    android:includeFontPadding="false"
-    android:maxLines="1"
-    android:textSize="44sp" />
+    android:layout_height="wrap_content">
+
+    <Chronometer
+        android:id="@+id/widget_chrono"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:importantForAccessibility="no"
+        android:fontFamily="monospace"
+        android:fontFeatureSettings="tnum"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:textSize="44sp"
+        android:countDown="true" />
+
+    <TextView
+        android:id="@+id/widget_clock_frozen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:importantForAccessibility="no"
+        android:fontFamily="monospace"
+        android:fontFeatureSettings="tnum"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:textSize="44sp"
+        android:visibility="invisible" />
+</FrameLayout>

@@ -11,6 +11,7 @@ import android.os.SystemClock
 import android.text.format.DateUtils
 import android.util.Log
 import android.util.TypedValue
+import android.view.View
 import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -272,14 +273,16 @@ internal fun subtitleText(mode: DisplayMode, style: AppStyle): String {
 }
 
 /**
- * The clock, in every state, through the SAME Chronometer view: running it
- * ticks in the launcher's process; paused / ringing / idle it is stopped and
- * shows a fixed value. One view means one set of font metrics and one slot
- * height, so pause/resume and the ring can't shift the digits (the old
- * paused/idle Glance Text had different padding, and the "2:30" vs "02:30"
- * formatting flipped on pause). Format policy in the widget is therefore
- * the platform's zero-padded elapsed-time style; rounding is the
- * chronometer's floor, matched here for the frozen values.
+ * The clock, in every state, in ONE slot: running, a Chronometer ticks in the
+ * launcher's process; paused / ringing / idle, a TextView with the same text
+ * settings shows the stopped value (a stopped Chronometer would describe itself
+ * to accessibility as a climbing duration). Both views live in the same layout
+ * with the same font and size, so pause/resume and the ring can't shift the
+ * digits (the old paused/idle Glance Text had different padding, and the "2:30"
+ * vs "02:30" formatting flipped on pause). Format policy in the widget is
+ * therefore the platform's zero-padded elapsed-time style. A stopped value rounds a
+ * part second up ([TimerMath.wholeSecondsLeft]), as the app, the notification and the
+ * spoken text do; only the ticking Chronometer floors, which is the platform's own rule.
  */
 @Composable
 internal fun TimeDisplay(
@@ -304,10 +307,12 @@ internal fun TimeDisplay(
     val color = ink ?: if (mode == DisplayMode.RUNNING) scheme.onSurface else scheme.onSurfaceVariant
     val rv = RemoteViews(context.packageName, layout).apply {
         setChronometerCountDown(R.id.widget_chrono, true)
-        setTextViewTextSize(R.id.widget_chrono, TypedValue.COMPLEX_UNIT_PX, sizePx)
         // Text floats over the water tank, so it reads on the vessel (top)
         // and on the water (bottom) alike.
-        setTextColor(R.id.widget_chrono, color.toArgb())
+        for (id in intArrayOf(R.id.widget_chrono, R.id.widget_clock_frozen)) {
+            setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_PX, sizePx)
+            setTextColor(id, color.toArgb())
+        }
         if (mode == DisplayMode.RUNNING) {
             setChronometer(
                 R.id.widget_chrono,
@@ -316,14 +321,21 @@ internal fun TimeDisplay(
                 null,
                 true
             )
+            setViewVisibility(R.id.widget_chrono, View.VISIBLE)
+            setViewVisibility(R.id.widget_clock_frozen, View.INVISIBLE)
         } else {
-            // Stop the view first (a reused view may still be ticking from
-            // the running state), then set the frozen text. Actions apply in
-            // order, and a stopped Chronometer never rewrites its text.
+            // Stop the Chronometer (a reused view may still be ticking from the running state)
+            // and hide it; the plain TextView shows the stopped time, so what accessibility
+            // reports is the text on screen. The Chronometer keeps the same text, so the slot
+            // never changes size. Actions apply in order.
             setChronometer(R.id.widget_chrono, SystemClock.elapsedRealtime(), null, false)
             val seconds =
-                if (mode == DisplayMode.PAUSED) state.pausedRemainingMillis / 1000L else 0L
-            setTextViewText(R.id.widget_chrono, DateUtils.formatElapsedTime(seconds))
+                if (mode == DisplayMode.PAUSED) TimerMath.wholeSecondsLeft(state.pausedRemainingMillis) else 0L
+            val frozen = DateUtils.formatElapsedTime(seconds)
+            setTextViewText(R.id.widget_chrono, frozen)
+            setTextViewText(R.id.widget_clock_frozen, frozen)
+            setViewVisibility(R.id.widget_chrono, View.INVISIBLE)
+            setViewVisibility(R.id.widget_clock_frozen, View.VISIBLE)
         }
     }
     AndroidRemoteViews(

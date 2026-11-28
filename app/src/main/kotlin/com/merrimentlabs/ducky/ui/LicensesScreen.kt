@@ -1,55 +1,52 @@
 package com.merrimentlabs.ducky.ui
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.merrimentlabs.ducky.OpenSourceLicenses
 import com.merrimentlabs.ducky.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Settings > About > Open-source notices. Ducky's own license, then one card per
- * bundled library (name, version, license); a tap expands the card to the full
- * license text. Same header, card shape, border and type scale as Settings, so the
- * four styles carry over.
+ * Settings > About > Open-source notices, in the family's shape: Ducky's own row first, then a
+ * sentence, then one row per component (its name over "version · license"). A row opens a page
+ * of selectable text: Ducky's NOTICE lines or the component's Maven id, then each license in
+ * full. The frame and the rows are Settings' (SettingsMetrics), so the four styles carry over.
  */
 @Composable
 fun LicensesScreen(
@@ -60,180 +57,190 @@ fun LicensesScreen(
     },
 ) {
     val context = LocalContext.current
-    val style = LocalAppStyle.current
     val notices by produceState<OpenSourceLicenses.Notices?>(null) {
         value = load(context.applicationContext)
     }
-    // One open card at a time; survives rotation like the Settings flag does.
-    var expandedId by rememberSaveable { mutableStateOf<String?>(null) }
-
-    val cardShape = RoundedCornerShape(style.cardCorner)
-    val cardModifier = Modifier
-        .fillMaxWidth()
-        .clip(cardShape)
-        .background(MaterialTheme.colorScheme.surface)
-        .then(
-            if (style.outlined) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, cardShape)
-            else Modifier
-        )
-    val colModifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()
-
-    LazyColumn(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-    ) {
-        item {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = colModifier.padding(horizontal = 8.dp, vertical = 6.dp)
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_back),
-                        contentDescription = stringResource(R.string.back),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-        item {
-            val title = stringResource(R.string.open_source_licenses)
-            if (style.bigHeader) {
-                Text(
-                    text = title,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                    modifier = colModifier.padding(horizontal = 16.dp).padding(top = 26.dp, bottom = 40.dp)
-                )
-            } else {
-                Text(
-                    text = if (style.upperCaseLabels) title.uppercase() else title,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = style.clockFont,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = colModifier.padding(start = 24.dp, end = 16.dp, bottom = 14.dp)
-                )
-            }
-        }
-        item {
-            // Ducky's own license first: Apache 2.0, opening to the NOTICE lines, then the text.
-            LicenseCard(
-                name = stringResource(R.string.app_name),
-                subtitle = stringResource(R.string.licenses_own_license),
-                header = stringResource(R.string.licenses_own_notice),
-                licenses = listOfNotNull(notices?.own),
-                expanded = expandedId == OWN_CARD_ID,
-                onToggle = { expandedId = if (expandedId == OWN_CARD_ID) null else OWN_CARD_ID },
-                modifier = colModifier.padding(horizontal = 16.dp).then(cardModifier)
-            )
-        }
-        item {
-            Text(
-                text = stringResource(R.string.licenses_intro),
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = colModifier.padding(horizontal = 34.dp).padding(top = 8.dp)
-            )
-        }
-        item {
-            Column(modifier = colModifier.padding(horizontal = 16.dp).padding(top = 8.dp)) {
-                SectionLabel(stringResource(R.string.licenses_section_libraries))
-            }
-        }
-        items(notices?.libraries.orEmpty(), key = { it.id }) { lib ->
-            val licenseNames = lib.licenses.joinToString(", ") { it.name }
-                .ifEmpty { stringResource(R.string.licenses_unknown) }
-            LicenseCard(
-                name = lib.name,
-                subtitle = if (lib.version.isBlank()) licenseNames
-                else stringResource(R.string.licenses_library_subtitle, lib.version, licenseNames),
-                header = lib.id,
-                licenses = lib.licenses,
-                expanded = expandedId == lib.id,
-                onToggle = { expandedId = if (expandedId == lib.id) null else lib.id },
-                modifier = colModifier.padding(horizontal = 16.dp).then(cardModifier)
-            )
-        }
-        item { Column(modifier = Modifier.padding(bottom = 24.dp)) {} }
+    // The open page, by row id; survives rotation like the Settings flag does.
+    var openId by rememberSaveable { mutableStateOf<String?>(null) }
+    val own = notices?.own
+    val ownPage = LicensePage(
+        title = stringResource(R.string.app_name),
+        header = stringResource(R.string.licenses_own_notice),
+        licenses = listOfNotNull(own),
+    )
+    val page = when (val id = openId) {
+        null -> null
+        OWN_ROW_ID -> ownPage
+        else -> notices?.libraries?.firstOrNull { it.id == id }?.let { LicensePage(it.name, it.id, it.licenses) }
+    }
+    if (page != null) {
+        BackHandler { openId = null }
+        LicenseTextPage(page, onBack = { openId = null })
+    } else {
+        LicenseList(notices, onOpen = { openId = it }, onBack = onBack)
     }
 }
 
-/** Ducky's own card has no Maven id, so it can't collide with a library's key. */
-private const val OWN_CARD_ID = "ducky"
+/** Ducky's own row has no Maven id, so it can't collide with a library's key. */
+private const val OWN_ROW_ID = "ducky"
 
-/**
- * One card: [name] and [subtitle]; a tap expands it to [header] (a library's Maven id, or
- * Ducky's NOTICE lines) and the full text of each license.
- */
+/** What a license page shows: its [title], a [header] line, then each license in full. */
+private class LicensePage(val title: String, val header: String, val licenses: List<OpenSourceLicenses.License>)
+
+/** The house page frame: a centered column at most 720dp, the house side margins. */
 @Composable
-private fun LicenseCard(
-    name: String,
-    subtitle: String,
-    header: String,
-    licenses: List<OpenSourceLicenses.License>,
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
+private fun HouseColumn(content: @Composable (Modifier) -> Unit) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val colModifier = Modifier
+            .widthIn(max = SettingsMetrics.COLUMN_MAX)
+            .fillMaxWidth()
+            .padding(horizontal = SettingsMetrics.side(maxWidth))
+        content(colModifier)
+    }
+}
+
+@Composable
+private fun LicenseList(
+    notices: OpenSourceLicenses.Notices?,
+    onOpen: (String) -> Unit,
+    onBack: () -> Unit,
 ) {
-    val state = stringResource(if (expanded) R.string.a11y_expanded else R.string.a11y_collapsed)
-    Column(modifier = modifier) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+    val style = LocalAppStyle.current
+    val corner = style.cardCorner
+    HouseColumn { colModifier ->
+        LazyColumn(
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .fillMaxWidth()
-                .clickable(role = Role.Button, onClick = onToggle)
-                .semantics { stateDescription = state }
-                .padding(horizontal = 18.dp, vertical = 14.dp)
+                .fillMaxSize()
+                .windowTopInset()
+                .navigationBarsPadding()
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            item {
+                TopBar(
+                    title = stringResource(R.string.open_source_licenses),
+                    onBack = onBack,
+                    modifier = colModifier.padding(top = SettingsMetrics.PAGE_TOP),
                 )
             }
-            Text(
-                text = "›",
-                fontSize = 24.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.rotate(if (expanded) 90f else 0f)
-            )
-        }
-        if (expanded) {
-            Column(modifier = Modifier.padding(start = 18.dp, end = 18.dp, bottom = 16.dp)) {
+            item {
+                Column(modifier = colModifier.padding(top = SettingsMetrics.LABEL_TOP)) {
+                    LicenseRow(
+                        name = stringResource(R.string.app_name),
+                        subtitle = stringResource(R.string.licenses_own_license),
+                        shape = RoundedCornerShape(corner),
+                        onClick = { onOpen(OWN_ROW_ID) },
+                    )
+                }
+            }
+            item {
                 Text(
-                    text = header,
-                    fontSize = 12.sp,
+                    text = stringResource(R.string.licenses_intro),
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 10.dp)
+                    modifier = colModifier.padding(
+                        start = SettingsMetrics.LABEL_SIDE,
+                        end = SettingsMetrics.LABEL_SIDE,
+                        top = 12.dp,
+                    )
                 )
-                licenses.forEach { license ->
-                    Text(
-                        text = license.name,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(top = 6.dp, bottom = 6.dp)
+            }
+            item {
+                Column(modifier = colModifier) {
+                    SectionLabel(stringResource(R.string.licenses_section_libraries))
+                }
+            }
+            val libraries = notices?.libraries.orEmpty()
+            itemsIndexed(libraries, key = { _, lib -> lib.id }) { index, lib ->
+                val licenseNames = lib.licenses.joinToString(", ") { it.name }
+                    .ifEmpty { stringResource(R.string.licenses_unknown) }
+                Column(modifier = colModifier) {
+                    if (index > 0) CardDividerOnSurface()
+                    LicenseRow(
+                        name = lib.name,
+                        subtitle = if (lib.version.isBlank()) licenseNames
+                        else stringResource(R.string.licenses_library_subtitle, lib.version, licenseNames),
+                        shape = cardSlice(corner, first = index == 0, last = index == libraries.lastIndex),
+                        onClick = { onOpen(lib.id) },
                     )
+                }
+            }
+            item { Column(modifier = Modifier.padding(bottom = SettingsMetrics.PAGE_BOTTOM)) {} }
+        }
+    }
+}
+
+/** A row's share of one card drawn across several list items: rounded only at the card's ends. */
+private fun cardSlice(corner: Dp, first: Boolean, last: Boolean): Shape = RoundedCornerShape(
+    topStart = if (first) corner else 0.dp, topEnd = if (first) corner else 0.dp,
+    bottomStart = if (last) corner else 0.dp, bottomEnd = if (last) corner else 0.dp,
+)
+
+/** The hairline between two rows of a card drawn across list items, on the card's color. */
+@Composable
+private fun CardDividerOnSurface() {
+    Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+        SettingsDivider()
+    }
+}
+
+/** One row of the list, in its card [shape]: the name over its version and license, then ›. */
+@Composable
+private fun LicenseRow(name: String, subtitle: String, shape: Shape, onClick: () -> Unit) {
+    val style = LocalAppStyle.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface)
+            .then(if (style.outlined) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, shape) else Modifier)
+            .focusRing(RectangleShape, focusRingColor())
+            .clickable(role = Role.Button, onClick = onClick)
+            .rowPadding()
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            RowTitle(name)
+            RowSubtitle(subtitle)
+        }
+        RowChevron()
+    }
+}
+
+/** A license page: the house top bar with the component's name, then text a person can select. */
+@Composable
+private fun LicenseTextPage(page: LicensePage, onBack: () -> Unit) {
+    HouseColumn { colModifier ->
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxSize()
+                .windowTopInset()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(top = SettingsMetrics.PAGE_TOP, bottom = SettingsMetrics.PAGE_BOTTOM)
+        ) {
+            TopBar(title = page.title, onBack = onBack, modifier = colModifier)
+            SelectionContainer(modifier = colModifier.padding(horizontal = SettingsMetrics.LABEL_SIDE)) {
+                Column {
                     Text(
-                        text = OpenSourceLicenses.reflow(license.text),
-                        fontSize = 12.sp,
-                        lineHeight = 17.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = page.header,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
                     )
+                    page.licenses.forEach { license ->
+                        Text(
+                            text = license.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
+                        )
+                        Text(
+                            text = OpenSourceLicenses.reflow(license.text),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

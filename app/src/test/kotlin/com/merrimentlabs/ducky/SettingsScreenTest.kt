@@ -1,5 +1,13 @@
 package com.merrimentlabs.ducky
 
+import org.robolectric.annotation.GraphicsMode
+import org.junit.Assert.assertFalse
+import androidx.compose.ui.semantics.SemanticsProperties
+import com.merrimentlabs.ducky.ui.FocusRingShown
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import android.app.Activity
@@ -25,6 +33,7 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -485,6 +494,171 @@ class SettingsScreenTest {
         assertTrue(top("Green") > top("Olive"))
     }
 
+    // --- Layout: the house Settings measurements (SettingsMetrics; Driveway is the reference) ---
+
+    /** A node's bounds in dp, from the merged tree (a row's text finds its row). */
+    private fun bounds(text: String) = rule.onNodeWithText(text).getUnclippedBoundsInRoot()
+
+    private fun assertNear(what: String, expected: Float, actual: Float) =
+        assertTrue("$what: expected $expected dp, was $actual dp", kotlin.math.abs(expected - actual) <= 0.6f)
+
+    /** The column, label, row and title measurements for a window [windowDp] wide. */
+    private fun assertHouseLayout(windowDp: Float) {
+        show()
+        val side = if (windowDp < 600f) 16f else 24f
+        val column = minOf(windowDp, 720f)
+        val left = (windowDp - column) / 2 + side
+        val content = column - 2 * side
+
+        val sound = bounds("Alarm sound")
+        assertNear("row start", left, sound.left.value)
+        assertNear("row width", content, (sound.right - sound.left).value)
+        // A card row: at least 56dp, its text 10dp from the top and the bottom. (Robolectric does
+        // not measure glyphs, so the text's own height is not checked here; the emulator
+        // measurements are in the walk report.)
+        val test = bounds("Test alarm")
+        val testTitle = rule.onNodeWithText("Test alarm", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val testLine = rule.onNodeWithText("Rings now to check sound and volume", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertNear("row padding above", test.top.value + 10f, testTitle.top.value)
+        assertNear("row padding below", testLine.bottom.value + 10f, test.bottom.value)
+        assertNear("text start", left + 16f, testTitle.left.value)
+        assertTrue("rows are at least 56dp", (bounds("Vibrate").bottom - bounds("Vibrate").top).value >= 56f - 0.6f)
+
+        // A label: 20dp above its text and 8dp below it to its card.
+        val alarm = bounds("Alarm")
+        assertNear("label text start", left + 4f, alarm.left.value)
+        assertNear("label text to its card", sound.top.value, alarm.bottom.value + 8f)
+        assertNear("card to the next label's text", bounds("High contrast").bottom.value + 20f, bounds("Time buttons").top.value)
+
+        // The top bar: a 48dp back button, 4dp, then the title on the same line, 4dp above the first label.
+        val back = rule.onNodeWithContentDescription("Back").getUnclippedBoundsInRoot()
+        val title = bounds("Settings")
+        // The button's node is its 40dp visual inside the 48dp target.
+        assertNear("back button start", left + 4f, back.left.value)
+        assertNear("title start", left + 48f + 4f, title.left.value)
+        assertNear("title on the back button's line", (back.top + back.bottom).value / 2, (title.top + title.bottom).value / 2)
+        assertNear("bar to the first label's text", back.bottom.value + 4f + 4f + 20f, alarm.top.value)
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun `with real glyphs a two-line row is about 60dp and a one-line row 56dp`() {
+        show()
+        val two = bounds("Test alarm")
+        val one = bounds("Vibrate")
+        val twoLines = (two.bottom - two.top).value
+        val oneLine = (one.bottom - one.top).value
+        // 10dp + a 22sp title line + a 20sp supporting line + 10dp = 62dp.
+        assertTrue("a two-line row is 56 to 64dp, was $twoLines", twoLines in 56f..64f)
+        assertNear("a one-line row", 56f, oneLine)
+    }
+
+    @Test
+    fun `on a phone the page has 16dp sides and the house rows, labels and top bar`() = assertHouseLayout(360f)
+
+    @Test
+    @Config(qualifiers = "w1280dp-h2200dp")
+    fun `in a laptop window the column is 720dp wide, centered, with 24dp sides`() = assertHouseLayout(1280f)
+
+    @Test
+    fun `every control on the page shows the focus ring when it has keyboard focus, and only then`() {
+        shadowOf(AppWidgetManager.getInstance(context)).setRequestPinAppWidgetSupported(true)
+        show()
+        val focusable = SemanticsMatcher.keyIsDefined(SemanticsActions.RequestFocus)
+        val nodes = rule.onAllNodes(focusable).fetchSemanticsNodes()
+        assertTrue("the page has its controls (${nodes.size})", nodes.size >= 20)
+        val missing = nodes.filter { FocusRingShown !in it.config }.map { it.config.toString() }
+        assertEquals("focusable controls without a ring", emptyList<String>(), missing)
+        for (i in nodes.indices) {
+            rule.onAllNodes(focusable)[i].performScrollTo().performSemanticsAction(SemanticsActions.RequestFocus)
+            rule.waitForIdle()
+            val shown = rule.onAllNodes(focusable).fetchSemanticsNodes().map { it.config.getOrNull(FocusRingShown) }
+            assertEquals("control $i focused: the ring on it alone", nodes.indices.map { it == i }, shown)
+        }
+    }
+
+    @Test
+    fun `Settings says what Android's backup copies, and the rules file copies everything`() {
+        show()
+        rule.onNodeWithText("If device backup is on, Android copies your settings and the running timer to your Google account")
+            .performScrollTo().assertIsDisplayed()
+        val rules = listOf(java.io.File("src/main/res/xml/data_extraction_rules.xml"), java.io.File("app/src/main/res/xml/data_extraction_rules.xml"))
+            .first { it.exists() }.readText()
+        assertTrue("an exclusion in data_extraction_rules.xml needs a new backup_note", "<exclude" !in rules && "<include" !in rules)
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h4000dp", fontScale = 2.0f)
+    fun `at twice the text size no text on Settings or About overlaps another`() {
+        shadowOf(AppWidgetManager.getInstance(context)).setRequestPinAppWidgetSupported(true)
+        show()
+        val texts = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.Text), useUnmergedTree = true)
+            .fetchSemanticsNodes()
+        assertTrue("found the page's text (${texts.size})", texts.size > 30)
+        // (Robolectric does not measure glyphs, so clipping inside a text is checked on the
+        // emulator screenshot at 200%; what this test can see is text laid over other text.)
+        val boxes = texts.map { it.config.getOrNull(SemanticsProperties.Text)?.joinToString() to it.boundsInRoot }
+            .filter { it.second.width > 0f && it.second.height > 0f }
+        for (i in boxes.indices) for (j in i + 1 until boxes.size) {
+            val overlap = boxes[i].second.intersect(boxes[j].second)
+            assertTrue("${boxes[i].first} overlaps ${boxes[j].first}", overlap.width <= 0.5f || overlap.height <= 0.5f)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w1280dp-h2200dp")
+    fun `the minus buttons line up in one column, on the same line as their plus buttons`() {
+        runBlocking {
+            TimerStore.setIncrement(context, 0, 30)   // "30s"
+            TimerStore.setIncrement(context, 1, 60)   // "1m"
+            TimerStore.setIncrement(context, 2, 90)   // "1m 30s", the widest
+        }
+        show()
+        for (window in listOf("laptop")) {
+            val minus = (1..3).map { rule.onNodeWithContentDescription("Decrease Button $it").getUnclippedBoundsInRoot() }
+            val plus = (1..3).map { rule.onNodeWithContentDescription("Increase Button $it").getUnclippedBoundsInRoot() }
+            minus.forEach { assertNear("$window: minus column", minus[0].left.value, it.left.value) }
+            plus.forEach { assertNear("$window: plus column", plus[0].left.value, it.left.value) }
+            minus.zip(plus).forEach { (m, p) ->
+                assertNear("$window: minus on its plus's line", (p.top + p.bottom).value / 2, (m.top + m.bottom).value / 2)
+            }
+        }
+    }
+
+    @Test
+    fun `on a phone the minus buttons line up too`() {
+        runBlocking {
+            TimerStore.setIncrement(context, 0, 30)
+            TimerStore.setIncrement(context, 1, 60)
+            TimerStore.setIncrement(context, 2, 90)
+        }
+        show()
+        val minus = (1..3).map { rule.onNodeWithContentDescription("Decrease Button $it").getUnclippedBoundsInRoot() }
+        minus.forEach { assertNear("phone: minus column", minus[0].left.value, it.left.value) }
+    }
+
+    @Test
+    fun `in a desktop window the page starts below the caption bar`() {
+        show()
+        // A desktop window's caption bar, 40dp tall, as Android reports it to an edge-to-edge app.
+        val caption = (40 * context.resources.displayMetrics.density).toInt()
+        rule.runOnUiThread {
+            androidx.core.view.WindowCompat.setDecorFitsSystemWindows(rule.activity.window, false)
+            val insets = androidx.core.view.WindowInsetsCompat.Builder()
+                .setInsets(androidx.core.view.WindowInsetsCompat.Type.captionBar(), androidx.core.graphics.Insets.of(0, caption, 0, 0))
+                .build()
+            androidx.core.view.ViewCompat.dispatchApplyWindowInsets(rule.activity.window.decorView, insets)
+        }
+        rule.waitForIdle()
+        val controls = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick)).fetchSemanticsNodes()
+        val captionDp = 40f
+        val under = controls.filter { it.boundsInRoot.top / context.resources.displayMetrics.density < captionDp - 0.5f }
+            .map { it.config.toString().take(80) }
+        assertEquals("controls under the caption bar", emptyList<String>(), under)
+        assertTrue("the back button is below the caption",
+            rule.onNodeWithContentDescription("Back").getUnclippedBoundsInRoot().top.value >= captionDp)
+    }
+
     // --- Card 5: About -------------------------------------------------------------------------
 
     @Test
@@ -494,6 +668,33 @@ class SettingsScreenTest {
         val intent = shadowOf(context as Application).nextStartedActivity
         assertEquals(Intent.ACTION_VIEW, intent.action)
         assertEquals(Uri.parse("https://merrimentlabs.com/support/ducky"), intent.data)
+    }
+
+    @Test
+    fun `on a phone with a Custom Tabs browser, Help opens in an in-app browser tab`() {
+        val browser = "com.example.browser"
+        val pm = shadowOf(context.packageManager)
+        val activity = ComponentName(browser, "$browser.Browser")
+        pm.addActivityIfNotPresent(activity)
+        pm.addIntentFilterForActivity(
+            activity,
+            android.content.IntentFilter(Intent.ACTION_VIEW).apply {
+                addCategory(Intent.CATEGORY_DEFAULT)
+                addCategory(Intent.CATEGORY_BROWSABLE)
+                addDataScheme("http")
+                addDataScheme("https")
+            },
+        )
+        val service = ComponentName(browser, "$browser.CustomTabs")
+        pm.addServiceIfNotPresent(service)
+        pm.addIntentFilterForService(service, android.content.IntentFilter("android.support.customtabs.action.CustomTabsService"))
+        show()
+        rule.onNodeWithContentDescription("Help, Answers to common questions, opens in browser").performScrollTo().performClick()
+        val intent = shadowOf(context as Application).nextStartedActivity
+        assertEquals(Intent.ACTION_VIEW, intent.action)
+        assertEquals(Uri.parse("https://merrimentlabs.com/support/ducky"), intent.data)
+        assertEquals(browser, intent.`package`)
+        assertTrue("a Custom Tab carries the session extra", intent.hasExtra("android.support.customtabs.extra.SESSION"))
     }
 
     @Test
@@ -579,7 +780,7 @@ class SettingsScreenTest {
     fun `the About header names the app and its version`() {
         show()
         rule.onNodeWithText("Ducky ${BuildConfig.VERSION_NAME}").assertIsDisplayed()
-        rule.onNodeWithText("The kitchen timer you can't miss.").assertExists()
+        rule.onNodeWithText("The kitchen timer you can’t miss.").assertExists()
         rule.onNodeWithText("Copyright © 2026 Jesse Johnston. Published by Merriment Labs.").assertExists()
     }
 

@@ -30,9 +30,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.merrimentlabs.ducky.R
 import com.merrimentlabs.ducky.widget.BubblesWidgetReceiver
 import com.merrimentlabs.ducky.widget.EggTimerWidgetReceiver
@@ -72,14 +70,13 @@ internal fun AddWidgetSheet(onPick: (Class<*>) -> Unit, onDismiss: () -> Unit) {
         ) {
             Text(
                 text = stringResource(R.string.add_widget_sheet_title).let { if (style.upperCaseLabels) it.uppercase() else it },
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = style.clockFont,
+                style = MaterialTheme.typography.titleLarge,
+                fontFamily = style.labelFont,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = stringResource(R.string.add_widget_sheet_body),
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
             )
@@ -104,6 +101,7 @@ private fun WidgetChoiceTile(choice: WidgetChoice, onClick: () -> Unit, modifier
     val spoken = stringResource(R.string.a11y_add_widget_choice, name, stringResource(choice.description))
     Column(
         modifier = modifier
+            .focusRing(shape, focusRingColor(MaterialTheme.colorScheme.background))
             .clip(shape)
             .background(MaterialTheme.colorScheme.background)
             .then(if (style.outlined) Modifier.border(1.dp, MaterialTheme.colorScheme.outline, shape) else Modifier)
@@ -119,14 +117,13 @@ private fun WidgetChoiceTile(choice: WidgetChoice, onClick: () -> Unit, modifier
         )
         Text(
             text = name,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(top = 8.dp)
         )
         Text(
             text = stringResource(choice.description),
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

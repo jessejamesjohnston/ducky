@@ -13,7 +13,7 @@ anywhere.
 | File | Written by | What it holds |
 |---|---|---|
 | `files/datastore/timer.preferences_pb` | `TimerStore` (DataStore) | The running timer (end time, total, paused or ringing) and every setting |
-| `shared_prefs/ducky_ui.xml` | `NotificationAsk`, `FullScreenTip` | Two screen hints: whether the notification permission has been asked for, and when the full-screen alarm tip was hidden |
+| `shared_prefs/ducky_ui.xml` | `NotificationAsk`, `FullScreenTip` | Three screen hints: whether the notification permission has been asked for, whether "Not now" was chosen before it was, and when the full-screen alarm tip was hidden |
 | `files/datastore/GlanceAppWidgetManager.preferences_pb`, `files/datastore/appWidgetLayout-<id>` | Glance | Which widget types are placed, and each placed widget's layout cache |
 | `no_backup/androidx.work.workdb` | WorkManager, for Glance | Glance's widget-update jobs |
 | `files/profileInstalled`, `files/profileinstaller_*` | AndroidX profile installer | Markers for the ahead-of-time compilation profile |

@@ -94,16 +94,34 @@ object FullScreenTip {
 object NotificationAsk {
     private const val PREFS = "ducky_ui"
     private const val ASKED = "notifications_asked"
+    private const val DEFERRED = "notifications_deferred"
 
     private fun granted(context: Context) =
         context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
 
-    /** True until the first ask: the permission is missing and Ducky never asked for it. */
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    /**
+     * True until the reason has been answered: the permission is missing, Ducky never asked for it,
+     * and the person has not said "Not now" to the reason card.
+     */
     fun pending(context: Context): Boolean =
-        !granted(context) && !context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ASKED, false)
+        !granted(context) && !prefs(context).getBoolean(ASKED, false) && !prefs(context).getBoolean(DEFERRED, false)
+
+    /**
+     * True after "Not now" while Ducky has still never asked: Android would show its dialog, so the
+     * banner offers "Allow notifications" (after every resume, until the permission is granted).
+     */
+    fun deferred(context: Context): Boolean =
+        !granted(context) && !prefs(context).getBoolean(ASKED, false) && prefs(context).getBoolean(DEFERRED, false)
+
+    /** Records "Not now" on the reason card. */
+    fun defer(context: Context) {
+        prefs(context).edit { putBoolean(DEFERRED, true) }
+    }
 
     fun markAsked(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean(ASKED, true) }
+        prefs(context).edit { putBoolean(ASKED, true) }
     }
 }

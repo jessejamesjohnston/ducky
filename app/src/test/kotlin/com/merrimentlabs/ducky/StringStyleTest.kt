@@ -14,9 +14,10 @@ import javax.xml.parsers.DocumentBuilderFactory
  * <string-array>, including the ones marked translatable="false":
  *
  * - A single sentence has no closing period. A block of two or more sentences keeps them.
- * - A trailing ellipsis only marks something in progress, so the label's first word is letters
- *   only, at least six long and ends in "ing" ("Ringing…", "Saving your timer…", but not
- *   "Ring…" or "Bring…"). Never on a label that opens a dialog or a screen.
+ * - An ellipsis only marks something in progress, so the first word of every sentence one ends
+ *   is one of [PROGRESS_WORDS] ("Ringing…", "Saving, please wait…", "Done. Saving…", but not
+ *   "Setting…", "Ring…", "Bring…" or "Ringing… Choose a sound…"). An ellipsis ends a sentence.
+ *   Never on a label that opens a dialog or a screen.
  * - Two parts are joined with a middle dot ( · ) or a comma, never an em dash, an en dash, a
  *   hyphen standing in for a dash (" - " or "--") or a semicolon.
  * - American spelling.
@@ -53,9 +54,20 @@ class StringStyleTest {
         )
         /** Text inside straight or curly double quotes, which may be someone else's words. */
         val QUOTED = Regex("\"[^\"]*\"|“[^”]*”")
-        val SENTENCE_END = Regex("[.!?](?=\\s|$)")
-        /** A first word that reads as something in progress: letters only, six or more, "-ing". */
-        val PROGRESS_WORD = Regex("\\p{L}{3,}ing", RegexOption.IGNORE_CASE)
+        /** A sentence ends in ".", "!", "?" or an ellipsis, before a space or the end. */
+        val SENTENCE_END = Regex("[.!?…](?=\\s|$)")
+        val SENTENCE_BREAK = Regex("(?<=[.!?…])\\s+")
+        val LETTERS = Regex("\\p{L}+")
+        /**
+         * The only first words a trailing ellipsis may follow, in lowercase. The list is closed on
+         * purpose: "-ing" alone also matches nouns ("Setting…", "Nothing…"), so a new progress
+         * label adds its word here.
+         */
+        val PROGRESS_WORDS = setOf(
+            "checking", "connecting", "downloading", "loading", "pausing", "preparing", "restoring",
+            "resuming", "ringing", "saving", "searching", "sending", "starting", "stopping",
+            "syncing", "updating", "waiting",
+        )
         val SERIAL_COMMA_MISSING = Regex("\\w[^,.;:·]*, [^,.;:·]+ (and|or) \\w")
     }
 
@@ -108,6 +120,22 @@ class StringStyleTest {
         return out
     }
 
+    /**
+     * The first word of [sentence], lowercase: letters only, so a comma, a non-breaking space or a
+     * hyphen ends it ("Saving, please wait" gives "saving", "Re-ring" gives "re").
+     */
+    private fun firstWord(sentence: String): String = LETTERS.find(sentence)?.value?.lowercase() ?: ""
+
+    /** Each sentence of [text] that ends in an ellipsis, with the ellipsis removed. */
+    private fun ellipsisSentences(text: String): List<String> =
+        SENTENCE_BREAK.split(text).mapNotNull {
+            when {
+                it.endsWith("…") -> it.dropLast(1)
+                it.endsWith("...") -> it.dropLast(3)
+                else -> null
+            }
+        }
+
     /** The rules [text] breaks, with a short note for each. */
     private fun violations(text: String): Map<Rule, String> {
         val found = linkedMapOf<Rule, String>()
@@ -116,13 +144,8 @@ class StringStyleTest {
         if (t.endsWith(".") && !t.endsWith("...") && sentences == 1) {
             found[Rule.SINGLE_SENTENCE_PERIOD] = "a single sentence ends in a period"
         }
-        val ellipsis = when {
-            t.endsWith("…") -> t.dropLast(1)
-            t.endsWith("...") -> t.dropLast(3)
-            else -> null
-        }
-        if (ellipsis != null && !PROGRESS_WORD.matches(ellipsis.trim().substringBefore(' '))) {
-            found[Rule.ELLIPSIS] = "a trailing ellipsis on something that is not in progress"
+        if (ellipsisSentences(t).any { firstWord(it) !in PROGRESS_WORDS }) {
+            found[Rule.ELLIPSIS] = "an ellipsis on something that is not in progress"
         }
         if ('\u2014' in t || '\u2013' in t || " - " in t || "--" in t || Regex(";\\s").containsMatchIn(t)) {
             found[Rule.DASH_OR_SEMICOLON_JOIN] = "a dash or semicolon join (use · or a comma)"
@@ -170,6 +193,27 @@ class StringStyleTest {
         }
     }
 
+    @Test fun theTaglineMatchesTheReadmeCharacterForCharacter() {
+        // The README carries the site's tagline, curly apostrophe included, and the About screen
+        // quotes it word for word, so the two must agree on every character.
+        val readme = listOf(java.io.File("../README.md"), java.io.File("README.md")).first { it.exists() }
+        val quoted = Regex("<p align=\"center\"><b>([^<]+)</b></p>").find(readme.readText())
+        assertTrue("the README states the tagline in its centered bold line", quoted != null)
+        val tagline = entries(stringsFile()).single { it.name == "app_tagline" }.text
+        assertEquals(quoted!!.groupValues[1], tagline)
+    }
+
+    @Test fun theActionsAfterARefusalUseTheHouseWords() {
+        // While Android still asks, the action names the permission; once refused for good it is
+        // exactly "Open Settings", capital S, for Android's Settings app.
+        val all = entries(stringsFile()).associate { it.name to it.text }
+        assertEquals("Open Settings", all["alarm_blocked_action"])
+        assertEquals("Allow notifications", all["alarm_action_allow"])
+        assertEquals("Not now", all["alarm_action_not_now"])
+        assertEquals("Continue", all["alarm_action_continue"])
+        assertTrue("no other wording for opening Settings", all.values.none { it.contains("in Settings") })
+    }
+
     @Test fun theRulesCatchWhatTheyShould() {
         fun rules(text: String) = violations(text).keys
         assertEquals(setOf(Rule.SINGLE_SENTENCE_PERIOD), rules("Allow notifications so the alarm can show."))
@@ -181,6 +225,14 @@ class StringStyleTest {
         assertEquals(setOf(Rule.ELLIPSIS), rules("Bring…"))
         assertEquals(setOf(Rule.ELLIPSIS), rules("Bring it…"))
         assertEquals(setOf(Rule.ELLIPSIS), rules("Re-ring…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Setting…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Nothing…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Something…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Morning..."))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Setting, please wait…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Saved. Setting…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Ringing… Choose a sound…"))
+        assertEquals(setOf(Rule.ELLIPSIS), rules("Choose a sound… Ringing…"))
         assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Working offline \u2014 using saved data"))
         assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Paused \u2013 tap to resume"))
         assertEquals(setOf(Rule.DASH_OR_SEMICOLON_JOIN), rules("Paused; tap to resume"))
@@ -200,6 +252,10 @@ class StringStyleTest {
             "Ringing…",
             "Syncing...",
             "Saving your timer…",
+            "Saving, please wait…",
+            "Saving\u00A0your timer…",
+            "Done. Saving…",
+            "Ringing… Saving…",
             "Open-source notices",
             "Wi-Fi and Bluetooth stay off",
             "Apache License 2.0",
@@ -217,6 +273,31 @@ class StringStyleTest {
             assertEquals(good, emptyMap<Rule, String>(), violations(good))
         }
     }
+
+    @Test fun anEllipsisAfterANounEndingInIngIsRefusedInEveryForm() {
+        // Nouns and other words that end in "ing" but say nothing is happening.
+        val nouns = listOf(
+            "Setting", "Nothing", "Something", "Anything", "Everything", "Morning", "Evening",
+            "Thing", "Ceiling", "Building", "Wedding", "Pudding", "Clothing", "Heading", "Offering",
+            "Sibling", "Ring", "Bring", "King", "Spring", "String", "Swing", "Wing", "Darling",
+        )
+        val refused = forms(nouns).filter { Rule.ELLIPSIS !in violations(it) }
+        assertEquals("labels the ellipsis rule let through", emptyList<String>(), refused)
+    }
+
+    @Test fun anEllipsisAfterAProgressWordIsAcceptedInEveryForm() {
+        val rejected = forms(PROGRESS_WORDS.toList()).filter { violations(it).isNotEmpty() }
+        assertEquals("progress labels the rules refused", emptyList<String>(), rejected)
+    }
+
+    /**
+     * Each word capitalized and lowercase, with "…" and "...": alone, with words after it (joined
+     * by a space, a non-breaking space or a comma), and as the second sentence of a label.
+     */
+    private fun forms(words: List<String>): List<String> =
+        words.flatMap { w -> listOf(w.replaceFirstChar { it.uppercase() }, w.lowercase()) }
+            .flatMap { w -> listOf(w, "$w your timer", "$w\u00A0your timer", "$w, please wait", "Done. $w", "Ringing… $w") }
+            .flatMap { w -> listOf("$w…", "$w...") }
 
     @Test fun decodingUndoesAndroidEscapes() {
         assertEquals("Time's up", decodeAndroid("Time\\'s up"))

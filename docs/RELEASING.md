@@ -19,6 +19,27 @@ CI never sees the key and never builds a release; it builds and tests only.
 - Never commit a keystore (`*.jks`, `*.keystore`, `*.p12` and `*.pfx` are gitignored) and never
   put the password in a file, `local.properties`, a command line or a log.
 
+## The release-tag key
+
+Release tags are signed with the maintainer's SSH key, and `scripts/release.sh` builds only a tag
+signed by it. The script pins the key by its fingerprint (what `ssh-keygen -lf <key>.pub`
+prints), never by an email address:
+`SHA256:sxKlr/5ruHyIbd2mZcZCEW4L0hVedAq35LioP5GuUBE`
+
+The maintainer's git setup, once per machine (the key's public half, listed in an allowed-signers
+file under any principal: it need not be the email git commits with, because the script finds the
+signer by key):
+
+```sh
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/<signing key>.pub
+git config --global gpg.ssh.allowedSignersFile ~/.ssh/allowed_signers
+```
+
+`scripts/release.sh --check-tag vX.Y.Z` runs the tag check alone, with no keystore and no build,
+and prints the key and the principal that signed. It is the check to run on a tag before
+building, and on an old tag to see that it still passes.
+
 How Gradle gets the key: `app/build.gradle.kts` reads `ducky.keystore.{path,storePassword,
 keyAlias,keyPassword}` from `local.properties`, then Gradle properties, then the environment as
 `DUCKY_KEYSTORE_PATH`, `DUCKY_KEYSTORE_STOREPASSWORD`, `DUCKY_KEYSTORE_KEYALIAS` and
@@ -34,29 +55,45 @@ release (the signatures differ), so uninstall the official copy first; your time
 fresh.
 
 1. Set `versionName` in `app/build.gradle.kts` to your version and commit. The tag must be `v`
-   plus that version: for the tag `v0.28.0-mine` in step 3, `versionName` is `0.28.0-mine`.
-2. Find your certificate's SHA-256. The script refuses an APK signed with any other certificate,
+   plus that version: for the tag `v0.28.1-mine` in step 4, `versionName` is `0.28.1-mine`.
+2. Let git check your tag's signature. The script builds only a tag with an SSH signature, by
+   the key you name in step 4, that the file git's `gpg.ssh.allowedSignersFile` setting names
+   lists. An OpenPGP or X.509 signature is refused. The name at the start of the line is any
+   principal you like (it need not be your git email), and the line may carry options such as
+   `namespaces="git"` between the name and the key, as ssh-keygen allows:
+
+   ```sh
+   mkdir -p ~/.config/git
+   echo "you@example.com $(cat ~/.ssh/id_ed25519.pub)" >> ~/.config/git/allowed_signers
+   git config gpg.ssh.allowedSignersFile ~/.config/git/allowed_signers
+   git config gpg.format ssh
+   git config user.signingkey ~/.ssh/id_ed25519.pub
+   ```
+
+3. Find your certificate's SHA-256. The script refuses an APK signed with any other certificate,
    and without this it expects the official one:
 
    ```sh
    keytool -list -v -keystore ~/keys/mykey.p12 | grep 'SHA256:'
    ```
 
-3. Tag and build:
+4. Tag, check the tag with your key pinned, and build:
 
    ```sh
-   git tag v0.28.0-mine
+   git tag -s v0.28.1-mine -m "Ducky 0.28.1-mine"
+   export DUCKY_TAG_KEY="$(ssh-keygen -lf ~/.ssh/id_ed25519.pub | awk '{print $2}')"
+   scripts/release.sh --check-tag v0.28.1-mine
    DUCKY_KEYSTORE_PATH=~/keys/mykey.p12 \
    DUCKY_KEYSTORE_KEYALIAS=<your key's alias> \
-   DUCKY_EXPECTED_CERT=<the SHA256 value from step 2> \
-   scripts/release.sh v0.28.0-mine
+   DUCKY_EXPECTED_CERT=<the SHA256 value from step 3> \
+   scripts/release.sh v0.28.1-mine
    ```
 
 The script asks for the password. Without a terminal, set `DUCKY_KEYSTORE_PASS` in the
 environment instead. It uses that one password for the keystore and the key, so your key password
 must equal your store password (keytool makes PKCS12 keystores that way). You can leave out
 `DUCKY_KEYSTORE_KEYALIAS` when your keystore holds a single key, or a key named `ducky`. Before it
-clones or builds anything, the script opens the keystore with that password, looks for the key
+fetches or builds anything, the script opens the keystore with that password, looks for the key
 (the alias is matched without regard to case, as keystores do) and unlocks the key with the same
 password. A wrong password or alias, or a key whose password differs from the keystore's, stops
 it at once, without printing the password.
@@ -68,9 +105,26 @@ it at once, without printing the password.
 2. **Changelog.** Write the release's section in `CHANGELOG.md`.
 3. **Green.** `./gradlew createDebugUnitTestCoverageReport lintDebug` and
    `python3 scripts/coverage.py --min 95`, the same checks CI runs.
-4. **Tag.** Commit, then make a signed tag `vX.Y.Z` and push it. A tag starts no release build.
-5. **Build.** `scripts/release.sh vX.Y.Z`. It clones the tag into a temporary directory, builds
-   `:app:assembleRelease` with R8 there, and checks the result:
+4. **Tag.** Commit, then make a signed tag `vX.Y.Z` (`git tag -s vX.Y.Z -m "Ducky X.Y.Z"`),
+   check it with `scripts/release.sh --check-tag vX.Y.Z`, and push it. A tag starts no release
+   build.
+5. **Build.** `DUCKY_KEYSTORE_PATH=<keystore> scripts/release.sh vX.Y.Z`. It first checks the
+   tag, before it reads the keystore:
+   - the tag is a tag object (not a lightweight tag) made for this tag's own name, so a signed
+     tag for another version cannot be moved under this name. It is always looked up as
+     `refs/tags/<tag>`, and a branch with the same name is refused;
+   - it carries an SSH signature. An OpenPGP or X.509 signature is refused before git sees it,
+     since git would check one against whatever keyring is at hand;
+   - `git verify-tag` accepts the signature against the allowed-signers file git's
+     `gpg.ssh.allowedSignersFile` names, with ssh-keygen forced as the verifier (a
+     `gpg.ssh.program` in any git config is ignored). git has ssh-keygen find the principal
+     the file lists for the signing key and verify it, so options on the key's line are read as ssh-keygen
+     reads them, and the signer is found by key, not by git's `user.email`;
+   - the signing key's fingerprint is the release-tag key above (`DUCKY_TAG_KEY` replaces it
+     for your own builds).
+
+   It prints the key and the principal that signed. It then checks out the tag's commit in a
+   temporary directory, builds `:app:assembleRelease` with R8 there, and checks the result:
    - R8 kept the four widget classes apart (each maps to itself in the mapping file), so every
      widget still draws its own picture;
    - the commit the Android Gradle Plugin records in `META-INF/version-control-info.textproto`
@@ -78,8 +132,9 @@ it at once, without printing the password.
    - the certificate SHA-256 equals the expected one, and the APK is not signed with an Android
      debug key.
 
-   Only then does it write `dist/ducky-X.Y.Z.apk`, `dist/SHA256SUMS` and
-   `dist/ducky-X.Y.Z-mapping.txt`.
+   Last, it runs the tag check again and requires the same tag object, so a tag moved or
+   replaced during the build is refused. Only then does it write `dist/ducky-X.Y.Z.apk`,
+   `dist/SHA256SUMS` and `dist/ducky-X.Y.Z-mapping.txt`.
 
    To check an APK the script did not just build (a download from the releases page, or a copy
    someone sent you), run `scripts/release.sh --verify path/to/ducky.apk`. It needs no keystore
@@ -114,6 +169,26 @@ it at once, without printing the password.
 
    Ducky never goes online, so it tells nobody about a release; people find it through the
    releases page, a GitHub release watch, or an updater such as Obtainium.
+
+## Testing the tag check
+
+`tools/test-release-tag-check.sh` runs `scripts/release.sh` on scratch repositories with
+throwaway SSH and OpenPGP keys, a throwaway keystore and a stub build, and prints one line per
+case: a correctly signed tag passes (also when the signer's git email differs from the principal
+the file lists, when the key's line carries an options field, and when git config names the file
+with `~/`); the same tag under the default pin, a lightweight tag, an unsigned tag, an
+OpenPGP-signed tag (gpg is never run), a key the file does not list, a listed key that is not the
+pinned one, a signed tag object made for another name, a tag moved during the build, a tag
+signed by an unlisted key while git config points `gpg.ssh.program` at a verifier that calls
+everything good, and a branch named like the tag (refused before any build) are each
+refused with their own message and leave `dist/` unwritten. It needs git, ssh-keygen, gpg,
+keytool and python3, works in a temporary directory with its own HOME (your keys, keyring and git
+settings are never read), and exits non-zero if any case gives the wrong result. The Gradle gate
+does not run it; run it after any change to `scripts/release.sh`:
+
+```sh
+tools/test-release-tag-check.sh
+```
 
 ## CI
 

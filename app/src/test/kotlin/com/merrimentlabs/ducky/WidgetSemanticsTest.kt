@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Chronometer
+import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,11 +26,23 @@ class WidgetSemanticsTest {
     @Test
     fun `the widget clock is hidden from screen readers in both fonts`() {
         for (layout in listOf(R.layout.widget_chrono_center, R.layout.widget_chrono_center_mono)) {
-            val view = LayoutInflater.from(context).inflate(layout, null)
+            val root = LayoutInflater.from(context).inflate(layout, null)
             val name = context.resources.getResourceEntryName(layout)
-            assertEquals(name, Chronometer::class.java, view.javaClass)
-            assertEquals(name, View.IMPORTANT_FOR_ACCESSIBILITY_NO, view.importantForAccessibility)
-            assertFalse(name, view.isImportantForAccessibility)
+            val ticking = root.findViewById<View>(R.id.widget_chrono)
+            val stopped = root.findViewById<TextView>(R.id.widget_clock_frozen)
+            assertEquals(name, Chronometer::class.java, ticking.javaClass)
+            assertEquals(name, TextView::class.java, stopped.javaClass)
+            for (view in listOf(ticking, stopped)) {
+                assertEquals(name, View.IMPORTANT_FOR_ACCESSIBILITY_NO, view.importantForAccessibility)
+                assertFalse(name, view.isImportantForAccessibility)
+            }
+            // Same text settings, so swapping between them never changes the slot's size.
+            val t = ticking as TextView
+            assertEquals(name, t.textSize, stopped.textSize, 0f)
+            assertEquals(name, t.typeface, stopped.typeface)
+            assertEquals(name, t.gravity, stopped.gravity)
+            assertEquals(name, t.includeFontPadding, stopped.includeFontPadding)
+            assertEquals(name, t.fontFeatureSettings, stopped.fontFeatureSettings)
         }
     }
 

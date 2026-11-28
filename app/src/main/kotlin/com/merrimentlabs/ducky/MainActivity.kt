@@ -1,5 +1,12 @@
 package com.merrimentlabs.ducky
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
+import com.merrimentlabs.ducky.ui.paintWindow
+import android.view.Menu
+import android.view.KeyboardShortcutInfo
+import android.view.KeyboardShortcutGroup
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -15,11 +22,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.merrimentlabs.ducky.ui.LicensesScreen
 import com.merrimentlabs.ducky.ui.SettingsScreen
@@ -72,6 +77,19 @@ class MainActivity : ComponentActivity() {
     /** Bumped by Ctrl+comma; the composition opens Settings when it changes. */
     private val settingsShortcut = mutableIntStateOf(0)
 
+    /** Lists Ctrl+comma in the system's keyboard shortcuts sheet (Meta+/). */
+    override fun onProvideKeyboardShortcuts(
+        data: MutableList<KeyboardShortcutGroup>,
+        menu: Menu?,
+        deviceId: Int,
+    ) {
+        super.onProvideKeyboardShortcuts(data, menu, deviceId)
+        data += KeyboardShortcutGroup(
+            getString(R.string.app_name),
+            listOf(KeyboardShortcutInfo(getString(R.string.settings_title), KeyEvent.KEYCODE_COMMA, KeyEvent.META_CTRL_ON)),
+        )
+    }
+
     // Ctrl+key presses no view handled arrive here.
     override fun onKeyShortcut(keyCode: Int, event: KeyEvent): Boolean {
         if (keyCode == KeyEvent.KEYCODE_COMMA && event.isCtrlPressed &&
@@ -104,6 +122,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TimerTheme {
+                // The caption bar and the system bars follow the page color.
+                val page = MaterialTheme.colorScheme.background
+                val label = stringResource(R.string.app_name)
+                LaunchedEffect(page) { paintWindow(page, label) }
                 // rememberSaveable: a tablet rotation recreates the activity;
                 // a plain remember would bounce the user out of Settings.
                 var showSettings by rememberSaveable { mutableStateOf(false) }

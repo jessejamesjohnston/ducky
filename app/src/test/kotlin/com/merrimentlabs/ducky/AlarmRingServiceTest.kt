@@ -67,6 +67,21 @@ class AlarmRingServiceTest {
         }
     }
 
+    /** Pumps the main looper until [done] holds, for up to about two seconds; returns [done]. */
+    private fun pumpUntil(done: () -> Boolean): Boolean {
+        repeat(200) {
+            shadowOf(Looper.getMainLooper()).idle()
+            if (done()) return true
+            Thread.sleep(10)
+        }
+        return done()
+    }
+
+    /** The action titles on the posted ring card, or null when none is posted. */
+    private fun ringCardActions(nm: android.app.NotificationManager): List<String>? =
+        shadowOf(nm).getNotification(TimerController.ALARM_NOTIFICATION_ID)
+            ?.actions?.map { it.title.toString() }
+
     /** Start the service and pump the main looper until the ring coroutine has run. */
     private fun startRinging(): AlarmRingService {
         val c = controller ?: Robolectric.buildService(AlarmRingService::class.java).create()
@@ -125,6 +140,9 @@ class AlarmRingServiceTest {
         val service = startRinging()
         val player = service.player!!
         val nm = context.getSystemService(android.app.NotificationManager::class.java)
+        // The start posts its card after the sound starts, so wait for it: dropped any earlier, it
+        // could land after the cancel below and pass this test without the repost running.
+        assertTrue("the start posts its ring card", pumpUntil { ringCardActions(nm) == listOf("+1 min", "Stop") })
         // The card was dropped (notifications were off when it was posted).
         nm.cancel(TimerController.ALARM_NOTIFICATION_ID)
         assertNull(shadowOf(nm).getNotification(TimerController.ALARM_NOTIFICATION_ID))
@@ -132,11 +150,7 @@ class AlarmRingServiceTest {
         service.onStartCommand(
             Intent(context, AlarmRingService::class.java).setAction(AlarmRingService.ACTION_REPOST), 0, 2
         )
-        repeat(200) {
-            shadowOf(Looper.getMainLooper()).idle()
-            if (shadowOf(nm).getNotification(TimerController.ALARM_NOTIFICATION_ID) != null) return@repeat
-            Thread.sleep(10)
-        }
+        pumpUntil { shadowOf(nm).getNotification(TimerController.ALARM_NOTIFICATION_ID) != null }
         val card = shadowOf(nm).getNotification(TimerController.ALARM_NOTIFICATION_ID)
         assertNotNull("the ring card is back", card)
         assertEquals(listOf("+1 min", "Stop"), card!!.actions.map { it.title.toString() })

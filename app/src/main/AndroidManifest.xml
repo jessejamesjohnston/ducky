@@ -24,6 +24,14 @@
         android:name="android.permission.ACCESS_NETWORK_STATE"
         tools:node="remove" />
 
+    <!-- Lets Ducky see which installed browser provides Custom Tabs, for the links in About
+         (ui/Links.kt). A query grants no permission and no network access. -->
+    <queries>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+
     <application
         android:name=".TimerApp"
         android:label="@string/app_name"
@@ -37,10 +45,19 @@
              below (swapped at runtime so the app icon, and the icon circle
              Android 17 derives from it on notifications, follows the user's
              accent color). MainActivity itself has no LAUNCHER filter. -->
+        <!-- On a laptop (Googlebook, Chromebook) the window opens at the family's 1040 x 700dp
+             and can be resized down to 320dp either way. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask" />
+            android:launchMode="singleTask"
+            android:resizeableActivity="true">
+            <layout
+                android:defaultWidth="1040dp"
+                android:defaultHeight="700dp"
+                android:minWidth="320dp"
+                android:minHeight="320dp" />
+        </activity>
 
         <activity-alias
             android:name=".LauncherRed"
@@ -189,6 +206,7 @@
         <activity
             android:name=".AlarmActivity"
             android:exported="false"
+            android:resizeableActivity="true"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:excludeFromRecents="true"

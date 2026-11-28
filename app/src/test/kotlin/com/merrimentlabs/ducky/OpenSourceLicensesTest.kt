@@ -42,6 +42,8 @@ class OpenSourceLicensesTest {
             "androidx.compose.material3:material3",
             "androidx.glance:glance-appwidget",
             "androidx.datastore:datastore-preferences",
+            "androidx.browser:browser",
+            "figtree",
             "org.jetbrains.kotlin:kotlin-stdlib",
         )) assertTrue("missing $expected", expected in ids)
         // Test-only libraries never reach the app, so they never reach the screen.

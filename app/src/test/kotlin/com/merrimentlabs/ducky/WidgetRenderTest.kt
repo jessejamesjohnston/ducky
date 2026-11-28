@@ -36,6 +36,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLog
+import org.robolectric.shadows.ShadowSystemClock
 
 /**
  * Every widget class, rendered to RemoteViews and inflated, in every display mode and every size
@@ -63,12 +64,13 @@ class WidgetRenderTest {
         total: Long = 15 * 60_000L,
         increments: List<Int>? = null,
         endTime: Long? = null,
+        pausedLeft: Long = 90_000L,
     ): Preferences {
         val now = System.currentTimeMillis()
         return mutablePreferencesOf(
             longPreferencesKey("end_time_millis") to (endTime ?: if (mode == "running") now + runningLeft else 0L),
             longPreferencesKey("total_millis") to if (mode == "idle" && endTime == null) 0L else total,
-            longPreferencesKey("paused_remaining_millis") to if (mode == "paused") 90_000L else 0L,
+            longPreferencesKey("paused_remaining_millis") to if (mode == "paused") pausedLeft else 0L,
             longPreferencesKey("ringing_since_millis") to if (mode == "ringing") now else 0L,
             stringPreferencesKey("style") to style,
             booleanPreferencesKey("high_contrast") to hc,
@@ -225,6 +227,68 @@ class WidgetRenderTest {
                 assertTrue(tag, idle.texts.contains("Tap + to start"))
                 assertTrue(tag, paused.texts.contains("paused"))
                 assertTrue(tag, running.texts.contains("remaining"))
+            }
+        }
+    }
+
+    /** Visible on screen once attached: the view and every parent are VISIBLE. */
+    private fun visible(v: View): Boolean =
+        v.visibility == View.VISIBLE && ((v.parent as? View)?.let { visible(it) } ?: true)
+
+    @Test
+    fun `a stopped clock describes itself as the time it shows, even as time passes`() {
+        val clockText = Regex("\\d\\d:\\d\\d")
+        for (widget in looks) for ((w, h) in listOf(200 to 140, 390 to 100, 130 to 60)) for (mode in listOf("idle", "paused", "ringing")) {
+            val tag = "${widget.javaClass.simpleName} $w x $h $mode"
+            val rendered = render(widget, w, h, state(mode))
+            // A Chronometer describes itself as a duration (now minus its base), not as its text.
+            ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(30))
+            val clocks = rendered.views.filter { it is TextView && visible(it) && clockText.matches(it.text) }
+            // The compact ringing widget shows only its two actions, no clock.
+            if (w == 130 && mode == "ringing") { assertTrue(tag, clocks.isEmpty()); continue }
+            val clock = clocks.single() as TextView
+            val shown = clock.text.toString()
+            assertEquals(tag, if (mode == "paused") "01:30" else "00:00", shown)
+            assertEquals(tag, shown, clock.contentDescription?.toString() ?: shown)
+        }
+    }
+
+    @Test
+    fun `a launcher reusing the widget's view shows the ticking clock while running and the static one otherwise`() {
+        // A launcher may reapply new RemoteViews onto the view it already inflated, so a running
+        // render must undo a stopped render's visibility, and the other way round.
+        for (widget in looks) for ((w, h) in listOf(200 to 140, 390 to 100)) {
+            val tag = "${widget.javaClass.simpleName} $w x $h"
+            val root = runBlocking { widget.compose(context, size = DpSize(w.dp, h.dp), state = state("paused")) }
+                .apply(context, FrameLayout(context))
+            fun reapply(mode: String) = runBlocking {
+                widget.compose(context, size = DpSize(w.dp, h.dp), state = state(mode)).reapply(context, root)
+            }
+            fun clockViews() = Rendered.walk(root).filter { it.id == R.id.widget_chrono || it.id == R.id.widget_clock_frozen }
+            fun visibleClock() = clockViews().filter { visible(it) }.map { it.id }
+            assertEquals(tag, listOf(R.id.widget_clock_frozen), visibleClock())
+            for ((mode, expected) in listOf("running" to R.id.widget_chrono, "paused" to R.id.widget_clock_frozen,
+                "running" to R.id.widget_chrono, "idle" to R.id.widget_clock_frozen)) {
+                reapply(mode)
+                assertEquals("$tag after $mode", listOf(expected), visibleClock())
+                assertEquals("$tag after $mode: both views stay in the slot", 2, clockViews().size)
+            }
+        }
+    }
+
+    @Test
+    fun `a paused widget speaks the same whole seconds it shows`() {
+        val clockText = Regex("\\d\\d:\\d\\d")
+        for (left in listOf(1L, 999L, 1_000L, 1_001L, 59_001L, 288_000L, 288_001L, 288_300L, 288_999L, 3_540_500L)) {
+            for (widget in looks) {
+                val tag = "${widget.javaClass.simpleName} paused at $left ms"
+                val r = render(widget, 200, 140, state("paused", pausedLeft = left))
+                val shown = (r.views.single { it is TextView && visible(it) && clockText.matches(it.text) } as TextView)
+                    .text.toString()
+                val seconds = shown.substringBefore(':').toLong() * 60 + shown.substringAfter(':').toLong()
+                assertEquals(tag, context.getString(R.string.a11y_widget_paused, TimerMath.speakClock(context, seconds * 1000)), r.timeBox)
+                // The app, the notification and the spoken text all round a part second up.
+                assertEquals(tag, (left + 999) / 1000, seconds)
             }
         }
     }

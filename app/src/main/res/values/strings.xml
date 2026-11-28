@@ -42,12 +42,13 @@
 
     <!-- Alarm readiness banner (timer screen; shown only while something blocks the alarm) -->
     <string name="alarm_blocked_notifications">Notifications are off, so the alarm can\'t show when time\'s up</string>
-    <string name="alarm_ask_notifications">Allow notifications so the alarm can show when time\'s up</string>
+    <string name="alarm_ask_notifications">The alarm can\'t show when time\'s up</string>
     <string name="alarm_blocked_channel">Timer alarms are set not to pop up, so the alarm can\'t show</string>
     <string name="alarm_blocked_fullscreen">Let the alarm fill the screen when time\'s up, even on the lock screen</string>
-    <string name="alarm_blocked_action">Turn on in Settings</string>
-    <string name="alarm_action_allow">Allow</string>
+    <string name="alarm_blocked_action">Open Settings</string>
+    <string name="alarm_action_allow">Allow notifications</string>
     <string name="alarm_action_not_now">Not now</string>
+    <string name="alarm_action_continue">Continue</string>
     <string name="notifications_why">Ducky rings through a notification. Allow notifications so the alarm can show.</string>
 
     <!-- Settings -->
@@ -70,6 +71,7 @@
     <string name="high_contrast">High contrast</string>
     <string name="high_contrast_subtitle">Use stronger colors and text</string>
     <string name="default_increments">Time buttons</string>
+    <string name="section_alarm">Alarm</string>
     <string name="section_style">Style</string>
     <string name="section_color">Color</string>
     <string name="button_n">Button %1$d</string>
@@ -151,9 +153,11 @@
         <item>Brown</item>
     </string-array>
     <string name="section_about">About</string>
+    <!-- Must match res/xml/data_extraction_rules.xml (it copies everything Ducky keeps). -->
+    <string name="backup_note">If device backup is on, Android copies your settings and the running timer to your Google account</string>
     <string name="privacy_policy">Privacy</string>
     <string name="app_version_line">%1$s %2$s</string>
-    <string name="app_tagline">The kitchen timer you can\'t miss.</string>
+    <string name="app_tagline">The kitchen timer you can’t miss.</string>
     <string name="help">Help</string>
     <string name="help_subtitle">Answers to common questions</string>
     <string name="help_url" translatable="false">https://merrimentlabs.com/support/ducky</string>
@@ -187,6 +191,4 @@
     <string name="licenses_unknown">License not listed</string>
     <string name="a11y_opens_in_browser">%1$s, opens in browser</string>
     <string name="a11y_opens_email">%1$s, opens email</string>
-    <string name="a11y_expanded">Expanded</string>
-    <string name="a11y_collapsed">Collapsed</string>
 </resources>

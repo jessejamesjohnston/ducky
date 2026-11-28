@@ -1,5 +1,11 @@
 package com.merrimentlabs.ducky
 
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
+import com.merrimentlabs.ducky.ui.focusRingColor
+import com.merrimentlabs.ducky.ui.focusRing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,9 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.merrimentlabs.ducky.ui.AppStyle
 
 /**
@@ -40,7 +44,13 @@ internal fun AlarmBlockedBanner(
     askAgain: Boolean,
     onFix: () -> Unit,
     onDismiss: () -> Unit,
+    explaining: Boolean = false,
+    onContinue: () -> Unit = {},
 ) {
+    if (explaining) {
+        NotificationAskCard(style, onNotNow = onDismiss, onContinue = onContinue)
+        return
+    }
     val message = stringResource(
         when (blocker) {
             // While the system dialog is up: why Ducky asks.
@@ -68,7 +78,8 @@ internal fun AlarmBlockedBanner(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 22.dp, vertical = 4.dp)
+            .padding(horizontal = 24.dp, vertical = 4.dp)
+            .focusRing(shape, focusRingColor(scheme.surfaceContainerHigh))
             .clip(shape)
             .background(scheme.surfaceContainerHigh)
             .then(if (style.outlined) Modifier.border(1.dp, scheme.outline, shape) else Modifier)
@@ -82,13 +93,12 @@ internal fun AlarmBlockedBanner(
             modifier = Modifier.padding(end = 12.dp, bottom = 8.dp).size(22.dp),
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = message, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = tint)
+            Text(text = message, style = MaterialTheme.typography.titleSmall, color = tint)
             if (!asking) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = action,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.labelLarge,
                         color = scheme.primary,
                         modifier = Modifier.heightIn(min = 40.dp).wrapContentHeight(),
                     )
@@ -96,11 +106,11 @@ internal fun AlarmBlockedBanner(
                     if (blocker == AlarmBlocker.FULL_SCREEN_OFF) {
                         Text(
                             text = stringResource(R.string.alarm_action_not_now),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.labelLarge,
                             color = tint,
                             modifier = Modifier
                                 .padding(start = 8.dp)
+                                .focusRing(RoundedCornerShape(8.dp), focusRingColor())
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable(role = Role.Button, onClick = onDismiss)
                                 .heightIn(min = 48.dp)
@@ -118,3 +128,56 @@ internal fun AlarmBlockedBanner(
     }
 }
 
+/**
+ * Before Android's notification dialog: why Ducky asks, in one sentence, then "Not now" and a
+ * filled "Continue", end-aligned like a dialog's buttons. Android's dialog opens only from
+ * Continue, so the reason is on screen before the question, never at the same time.
+ */
+@Composable
+private fun NotificationAskCard(style: AppStyle, onNotNow: () -> Unit, onContinue: () -> Unit) {
+    val shape = RoundedCornerShape(style.cardCorner)
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 4.dp)
+            .clip(shape)
+            .background(scheme.surfaceContainerHigh)
+            .then(if (style.outlined) Modifier.border(1.dp, scheme.outline, shape) else Modifier)
+            .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painter = painterResource(R.drawable.ic_notification_timer),
+                contentDescription = null,
+                tint = scheme.primary,
+                modifier = Modifier.padding(end = 12.dp).size(24.dp),
+            )
+            Text(
+                text = stringResource(R.string.notifications_why),
+                // 14sp, like the other banners: at the 16sp body size the card leaves the clock
+                // too little room in a short split-screen window (ClockFitTest).
+                style = MaterialTheme.typography.titleSmall,
+                color = scheme.onSurface,
+            )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            TextButton(
+                onClick = onNotNow,
+                modifier = Modifier.focusRing(CircleShape, focusRingColor()),
+            ) {
+                Text(stringResource(R.string.alarm_action_not_now), style = MaterialTheme.typography.labelLarge)
+            }
+            Button(
+                onClick = onContinue,
+                modifier = Modifier.focusRing(CircleShape, focusRingColor(scheme.primary)),
+            ) {
+                Text(stringResource(R.string.alarm_action_continue), style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}

@@ -1,5 +1,9 @@
 package com.merrimentlabs.ducky
 
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.graphics.toArgb
+import android.view.KeyboardShortcutGroup
+import android.view.WindowInsetsController
 import android.Manifest
 import android.app.ActivityManager
 import android.app.NotificationChannel
@@ -307,8 +311,8 @@ class MainActivityTest {
         // A resume re-reads whether Android would still show its dialog.
         scenario!!.moveToState(Lifecycle.State.STARTED)
         scenario!!.moveToState(Lifecycle.State.RESUMED)
-        rule.awaitNode { onNodeWithText("Allow notifications so the alarm can show when time's up") }
-        rule.awaitNode { onNodeWithText("Allow") }.performClick()
+        rule.awaitNode { onNodeWithText("The alarm can't show when time's up") }
+        rule.awaitNode { onNodeWithText("Allow notifications") }.performClick()
         val request = shadowOf(activity!!).lastRequestedPermission
         assertEquals(listOf(Manifest.permission.POST_NOTIFICATIONS), request.requestedPermissions.toList())
         val next = shadowOf(activity!!).nextStartedActivity
@@ -318,7 +322,7 @@ class MainActivityTest {
     // ---- Notification ask (at the moment of need, never at launch) ----
 
     @Test
-    fun `notifications are asked when a timer is set, with the reason on the banner, then the answer shows`() {
+    fun `when a timer is set the reason shows first, Android's dialog opens only from Continue, then the answer shows`() {
         shadowOf(nm).setNotificationsEnabled(false)
         launch()
         rule.awaitNode { onNodeWithText("Add time to start") }
@@ -330,6 +334,10 @@ class MainActivityTest {
         rule.awaitNode {
             onNodeWithText("Ducky rings through a notification. Allow notifications so the alarm can show.")
         }
+        rule.pump(2)
+        assertNull("the reason is on screen before the dialog, not with it", shadowOf(activity!!).lastRequestedPermission)
+        rule.onNodeWithText("Continue").performClick()
+        awaitTrue { shadowOf(activity!!).lastRequestedPermission != null }
         val request = shadowOf(activity!!).lastRequestedPermission
         assertEquals(listOf(Manifest.permission.POST_NOTIFICATIONS), request.requestedPermissions.toList())
         assertFalse(NotificationAsk.pending(context)) // remembered before the dialog shows
@@ -343,12 +351,46 @@ class MainActivityTest {
     }
 
     @Test
+    fun `not now asks nothing and leaves an Allow notifications banner for later`() {
+        shadowOf(nm).setNotificationsEnabled(false)
+        launch()
+        rule.awaitNode { onNodeWithContentDescription("Add 30 seconds") }.performClick()
+        rule.awaitNode { onNodeWithText("Not now") }.performClick()
+        rule.awaitNode { onNodeWithText("The alarm can't show when time's up") }
+        assertNull("nothing asked", shadowOf(activity!!).lastRequestedPermission)
+        assertTrue("still unasked, so a later ask is Android's real first one", NotificationAsk.deferred(context))
+        rule.onNodeWithText("Allow notifications").performClick()
+        awaitTrue { shadowOf(activity!!).lastRequestedPermission != null }
+    }
+
+    @Test
+    fun `after not now the banner and its Allow notifications button come back after every resume`() {
+        shadowOf(nm).setNotificationsEnabled(false)
+        launch()
+        rule.awaitNode { onNodeWithContentDescription("Add 30 seconds") }.performClick()
+        rule.awaitNode { onNodeWithText("Not now") }.performClick()
+        rule.awaitNode { onNodeWithText("The alarm can't show when time's up") }
+        repeat(2) {
+            // Home and back, the screen off and on, the sound picker: a pause and a resume.
+            scenario!!.moveToState(Lifecycle.State.STARTED)
+            scenario!!.moveToState(Lifecycle.State.RESUMED)
+            rule.pump(2)
+            rule.awaitNode { onNodeWithText("The alarm can't show when time's up") }
+            rule.onNodeWithText("Allow notifications").assertExists()
+            rule.onNodeWithText("Continue").assertDoesNotExist()
+        }
+        rule.onNodeWithText("Allow notifications").performClick()
+        awaitTrue { shadowOf(activity!!).lastRequestedPermission != null }
+    }
+
+    @Test
     fun `allowing notifications during a ring asks the ring service to repost its card`() {
         shadowOf(nm).setNotificationsEnabled(false)
         ringing()
         AlarmRingService.running = true
         try {
             launch()
+            rule.awaitNode { onNodeWithText("Continue") }.performClick()
             awaitTrue { shadowOf(activity!!).lastRequestedPermission != null }
             val request = shadowOf(activity!!).lastRequestedPermission
             grantNotifications()
@@ -365,11 +407,90 @@ class MainActivityTest {
     fun `a timer already running when the app opens triggers the ask too`() {
         runBlocking { TimerController.addTime(context, 300_000L) }
         launch()
+        rule.awaitNode { onNodeWithText("Continue") }.performClick()
         awaitTrue { shadowOf(activity!!).lastRequestedPermission != null }
         assertEquals(
             Manifest.permission.POST_NOTIFICATIONS,
             shadowOf(activity!!).lastRequestedPermission.requestedPermissions.single(),
         )
+    }
+
+    // ---- The window on a laptop ----
+
+    private fun appearance() = activity!!.window.insetsController!!.systemBarsAppearance
+
+    @Test
+    fun `in light the caption and the bars sit on the page color with dark icons, and the task says Ducky`() {
+        grantNotifications()
+        launch()
+        rule.pump(2)
+        val light = WindowInsetsController.APPEARANCE_LIGHT_CAPTION_BARS or
+            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+        assertEquals(light, appearance() and light)
+        assertTrue(appearance() and WindowInsetsController.APPEARANCE_TRANSPARENT_CAPTION_BAR_BACKGROUND != 0)
+        // Robolectric keeps the last setTaskDescription in Activity's own field, with no accessor.
+        val task = android.app.Activity::class.java.getDeclaredField("mTaskDescription")
+            .apply { isAccessible = true }.get(activity!!) as android.app.ActivityManager.TaskDescription
+        assertEquals("Ducky", task.label)
+        val page = com.merrimentlabs.ducky.ui.Palette.light(TimerStore.DEFAULT_SEED, monochrome = false).background
+        assertEquals(page.toArgb(), task.primaryColor)
+    }
+
+    @Test
+    @Config(qualifiers = "night")
+    fun `in dark the caption and the bars get light icons`() {
+        grantNotifications()
+        launch()
+        rule.pump(2)
+        assertEquals(0, appearance() and WindowInsetsController.APPEARANCE_LIGHT_CAPTION_BARS)
+        assertEquals(0, appearance() and WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS)
+    }
+
+    @Test
+    fun `the system shortcuts sheet lists Ctrl+comma for Settings`() {
+        grantNotifications()
+        launch()
+        val groups = mutableListOf<KeyboardShortcutGroup>()
+        activity!!.onProvideKeyboardShortcuts(groups, null, 0)
+        val item = groups.single { it.label == "Ducky" }.items.single()
+        assertEquals("Settings", item.label)
+        assertEquals(KeyEvent.KEYCODE_COMMA, item.keycode)
+        assertEquals(KeyEvent.META_CTRL_ON, item.modifiers)
+    }
+
+    @Test
+    fun `the main window declares the family's size and is resizable`() {
+        val manifest = listOf(java.io.File("src/main/AndroidManifest.xml"), java.io.File("app/src/main/AndroidManifest.xml")).first { it.exists() }
+        val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
+            .newDocumentBuilder().parse(manifest)
+        val ns = "http://schemas.android.com/apk/res/android"
+        val activities = doc.getElementsByTagName("activity")
+        val main = (0 until activities.length).map { activities.item(it) as org.w3c.dom.Element }
+            .single { it.getAttributeNS(ns, "name") == ".MainActivity" }
+        assertEquals("true", main.getAttributeNS(ns, "resizeableActivity"))
+        val layout = main.getElementsByTagName("layout").item(0) as org.w3c.dom.Element
+        assertEquals("1040dp", layout.getAttributeNS(ns, "defaultWidth"))
+        assertEquals("700dp", layout.getAttributeNS(ns, "defaultHeight"))
+        assertEquals("320dp", layout.getAttributeNS(ns, "minWidth"))
+        assertEquals("320dp", layout.getAttributeNS(ns, "minHeight"))
+    }
+
+    @Test
+    fun `in a desktop window the timer screen starts below the caption bar`() {
+        grantNotifications()
+        launch()
+        rule.awaitNode { onNodeWithContentDescription("Add 30 seconds") }
+        val density = context.resources.displayMetrics.density
+        scenario!!.onActivity { a ->
+            val insets = androidx.core.view.WindowInsetsCompat.Builder()
+                .setInsets(androidx.core.view.WindowInsetsCompat.Type.captionBar(), androidx.core.graphics.Insets.of(0, (40 * density).toInt(), 0, 0))
+                .build()
+            androidx.core.view.ViewCompat.dispatchApplyWindowInsets(a.window.decorView, insets)
+        }
+        rule.waitForIdle()
+        val under = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick)).fetchSemanticsNodes()
+            .filter { it.boundsInRoot.top / density < 39.5f }.map { it.config.toString().take(80) }
+        assertEquals("controls under the caption bar", emptyList<String>(), under)
     }
 
     // ---- Navigation ----

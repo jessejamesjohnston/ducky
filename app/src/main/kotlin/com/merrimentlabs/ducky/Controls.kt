@@ -1,5 +1,8 @@
 package com.merrimentlabs.ducky
 
+import com.merrimentlabs.ducky.ui.Figtree
+import com.merrimentlabs.ducky.ui.focusRingColor
+import com.merrimentlabs.ducky.ui.focusRing
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -207,6 +210,7 @@ fun ChunkyButton(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .height(heightDp.dp)
+            .focusRing(shape, if (bg.alpha == 0f) focusRingColor() else focusRingColor(bg))
             .clip(shape)
             .let { m -> if (gradient != null) m.background(gradient) else m.background(bg) }
             .let { m ->
@@ -220,7 +224,7 @@ fun ChunkyButton(
             text = if (style.upperCaseLabels) label.uppercase() else label,
             style = TextStyle(
                 fontWeight = FontWeight.SemiBold,
-                fontFamily = style.clockFont,
+                fontFamily = style.labelFont ?: Figtree,
                 textAlign = TextAlign.Center,
                 color = fg,
             ),

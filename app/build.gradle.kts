@@ -37,8 +37,8 @@ android {
         applicationId = "com.merrimentlabs.ducky"
         minSdk = 34
         targetSdk = 36
-        versionCode = 36
-        versionName = "0.28.0"
+        versionCode = 37
+        versionName = "0.28.1"
 
         // Diagnostic build for widget glitches (a jumping clock or uneven water on a launcher):
         // -PwidgetHeartbeat=false builds an APK whose display tick still runs (the notification
@@ -235,6 +235,9 @@ aboutLibraries {
         allowedLicenses.addAll("Apache-2.0")
         // Only the repackaged protobuf runtimes may be BSD: the vendored BSD text is theirs.
         allowedLicensesMap = mapOf(
+            // The bundled interface typeface (res/font/figtree.ttf), declared in
+            // aboutlibraries/libraries/figtree.json since it is a file, not a dependency.
+            "OFL-1.1" to listOf("figtree"),
             "BSD-3-Clause" to listOf(
                 "androidx.datastore:datastore-preferences-external-protobuf",
                 "androidx.glance:glance-appwidget-external-protobuf",
@@ -247,6 +250,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
+    // Custom Tabs: links from About open in an in-app browser tab on phones and tablets.
+    implementation(libs.androidx.browser)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

@@ -1,5 +1,9 @@
 package com.merrimentlabs.ducky
 
+import com.merrimentlabs.ducky.ui.windowTopInset
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import com.merrimentlabs.ducky.ui.paintWindow
 import android.view.HapticFeedbackConstants
 import androidx.compose.ui.platform.LocalView
 import android.os.Bundle
@@ -17,7 +21,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -28,18 +31,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.merrimentlabs.ducky.ui.LocalAppStyle
@@ -64,6 +64,9 @@ class AlarmActivity : ComponentActivity() {
         setTurnScreenOn(true)
         setContent {
             TimerTheme {
+                val page = MaterialTheme.colorScheme.background
+                val label = stringResource(R.string.app_name)
+                LaunchedEffect(page) { paintWindow(page, label) }
                 AlarmScreen(onStopped = { finishAndRemoveTask() })
             }
         }
@@ -105,7 +108,7 @@ private fun AlarmScreen(onStopped: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
+            .windowTopInset()
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
     ) {
@@ -119,10 +122,9 @@ private fun AlarmScreen(onStopped: () -> Unit) {
         )
         Text(
             text = stringResource(R.string.alarm_done).let { if (style.upperCaseLabels) it.uppercase() else it },
-            fontSize = 13.sp,
+            style = MaterialTheme.typography.titleSmall,
             letterSpacing = if (style.upperCaseLabels) 2.sp else 0.5.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = style.clockFont,
+            fontFamily = style.labelFont,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 20.dp)
         )
@@ -142,7 +144,7 @@ private fun AlarmScreen(onStopped: () -> Unit) {
                         .padding(top = 12.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                        .padding(horizontal = 18.dp, vertical = 9.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Box(
                         modifier = Modifier
@@ -160,8 +162,7 @@ private fun AlarmScreen(onStopped: () -> Unit) {
                             R.string.ringing_status_test,
                             TimerMath.formatClock(now - s.ringingSinceMillis)
                         ),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }

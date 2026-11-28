@@ -15,9 +15,15 @@ object TimerMath {
         if (currentEndMillis > nowMillis) currentEndMillis + addMillis
         else nowMillis + addMillis
 
+    /**
+     * Whole seconds left in [millis], a part second counting as a full one: the one rounding rule
+     * for every remaining time Ducky shows or speaks, so the last second reads 0:01, not 0:00.
+     */
+    fun wholeSecondsLeft(millis: Long): Long = (millis.coerceAtLeast(0) + 999) / 1000
+
     /** "2:30", "12:00", "1:02:05": for the widget/app countdown. */
     fun formatClock(millis: Long): String {
-        val totalSec = (millis.coerceAtLeast(0) + 999) / 1000
+        val totalSec = wholeSecondsLeft(millis)
         val h = totalSec / 3600
         val m = (totalSec % 3600) / 60
         val s = totalSec % 60
@@ -67,7 +73,7 @@ object TimerMath {
         approxMinutesLeft(millis)?.let { context.getString(R.string.a11y_about, speakDuration(context, it * 60)) }
             ?: context.getString(R.string.a11y_under_a_minute)
 
-    /** Spoken remaining time from millis (rounds up like formatClock). */
+    /** Spoken remaining time from millis (rounds as [wholeSecondsLeft], like formatClock). */
     fun speakClock(context: Context, millis: Long): String =
-        speakDuration(context, (millis.coerceAtLeast(0) + 999) / 1000)
+        speakDuration(context, wholeSecondsLeft(millis))
 }
